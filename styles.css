@@ -517,9 +517,17 @@ html, body {
 }
 
 .milestone-badge {
-    font-size: clamp(24px, 6vw, 36px);
+    width: clamp(32px, 8vw, 48px);
+    height: auto;
     filter: drop-shadow(2px 2px 0 #000);
     animation: badgePop 0.3s ease-out backwards;
+    image-rendering: pixelated;
+}
+
+@keyframes badgePop {
+    0% { transform: scale(0); opacity: 0; }
+    70% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 .gameover-buttons {

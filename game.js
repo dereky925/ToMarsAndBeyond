@@ -1279,16 +1279,29 @@ const Game = {
         document.getElementById('final-score').textContent = `FINAL SCORE: ${this.stats.score.toLocaleString()}`;
         document.getElementById('coins-collected').textContent = `DOGECOINS: ${this.stats.coins}`;
         
-        // Milestones list
+        // Milestones list - use PNG images instead of emojis
         const list = document.getElementById('milestones-list');
         list.innerHTML = '';
         if (this.milestonesReached.length === 0) {
             list.innerHTML = '<span style="color: #666;">None yet - try again!</span>';
         } else {
+            // Map milestone names to asset names
+            const assetNameMap = {
+                'MOON': 'Moon',
+                'MARS': 'Mars',
+                'JUPITER': 'Jupiter',
+                'SATURN': 'Saturn',
+                'URANUS': 'Uranus',
+                'NEPTUNE': 'Neptune',
+                'PLUTO': 'Pluto',
+                'VOYAGER 1': 'Voyager1'
+            };
+            
             this.milestonesReached.forEach((m, i) => {
-                const badge = document.createElement('span');
+                const badge = document.createElement('img');
                 badge.className = 'milestone-badge';
-                badge.textContent = m.emoji;
+                badge.src = `Assets/${assetNameMap[m.name] || m.name}.png`;
+                badge.alt = m.name;
                 badge.title = m.name;
                 badge.style.animationDelay = (i * 0.1) + 's';
                 list.appendChild(badge);
