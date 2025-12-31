@@ -539,88 +539,116 @@ const Game = {
     },
     
     async captureScreenshot(element) {
-        // Create a canvas to capture the screenshot
-        const rect = element.getBoundingClientRect();
+        // Create a canvas with fixed dimensions for consistent screenshots
         const canvas = document.createElement('canvas');
+        const width = 400;
+        const height = 600;
         const scale = 2; // Higher resolution
-        canvas.width = rect.width * scale;
-        canvas.height = rect.height * scale;
+        canvas.width = width * scale;
+        canvas.height = height * scale;
         const ctx = canvas.getContext('2d');
         ctx.scale(scale, scale);
         
         // Draw background
-        const gradient = ctx.createLinearGradient(0, 0, 0, rect.height);
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
         gradient.addColorStop(0, '#0a0a1a');
         gradient.addColorStop(0.5, '#1a0a2a');
         gradient.addColorStop(1, '#2a0a3a');
         ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, rect.width, rect.height);
+        ctx.fillRect(0, 0, width, height);
         
         // Draw stars
         for (let i = 0; i < 100; i++) {
             ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
             ctx.beginPath();
-            ctx.arc(Math.random() * rect.width, Math.random() * rect.height, Math.random() * 2, 0, Math.PI * 2);
+            ctx.arc(Math.random() * width, Math.random() * height, Math.random() * 2, 0, Math.PI * 2);
             ctx.fill();
         }
         
         // Set text properties
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const centerX = rect.width / 2;
+        const centerX = width / 2;
+        let currentY = 50;
         
         // Game Over title
-        ctx.font = 'bold 36px "Press Start 2P", monospace';
+        ctx.font = 'bold 28px "Press Start 2P", monospace';
         ctx.fillStyle = '#ff0040';
         ctx.shadowColor = '#800020';
-        ctx.shadowOffsetX = 4;
-        ctx.shadowOffsetY = 4;
-        ctx.fillText('GAME OVER', centerX, 50);
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
+        ctx.fillText('GAME OVER', centerX, currentY);
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
+        currentY += 60;
         
         // Medal
-        ctx.font = '60px Arial';
+        ctx.font = '50px Arial';
         const medal = document.getElementById('medal').textContent;
-        ctx.fillText(medal, centerX, 120);
+        ctx.fillText(medal, centerX, currentY);
+        currentY += 50;
         
         // Medal text
-        ctx.font = '14px "Press Start 2P", monospace';
+        ctx.font = '12px "Press Start 2P", monospace';
         ctx.fillStyle = '#ffd700';
-        ctx.fillText(document.getElementById('medal-text').textContent, centerX, 170);
+        ctx.fillText(document.getElementById('medal-text').textContent, centerX, currentY);
+        currentY += 40;
         
         // Stats box
         ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         ctx.strokeStyle = '#00d4ff';
         ctx.lineWidth = 3;
-        const boxY = 200;
-        const boxHeight = 100;
-        ctx.fillRect(20, boxY, rect.width - 40, boxHeight);
-        ctx.strokeRect(20, boxY, rect.width - 40, boxHeight);
+        const boxHeight = 110;
+        ctx.fillRect(20, currentY, width - 40, boxHeight);
+        ctx.strokeRect(20, currentY, width - 40, boxHeight);
         
         // Stats text
-        ctx.font = '12px "Press Start 2P", monospace';
+        ctx.font = '11px "Press Start 2P", monospace';
         ctx.fillStyle = '#ffd700';
-        ctx.fillText(`ALTITUDE: ${this.formatDistance(this.stats.altitude)}`, centerX, boxY + 30);
+        ctx.fillText(`ALTITUDE: ${this.formatDistance(this.stats.altitude)}`, centerX, currentY + 30);
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(`FINAL SCORE: ${this.stats.score.toLocaleString()}`, centerX, boxY + 55);
-        ctx.fillText(`DOGECOINS: ${this.stats.coins}`, centerX, boxY + 80);
+        ctx.fillText(`FINAL SCORE: ${this.stats.score.toLocaleString()}`, centerX, currentY + 58);
+        ctx.fillText(`DOGECOINS: ${this.stats.coins}`, centerX, currentY + 86);
+        currentY += boxHeight + 30;
         
-        // Milestones
+        // Milestones with PNG images
         if (this.milestonesReached.length > 0) {
             ctx.font = '10px "Press Start 2P", monospace';
             ctx.fillStyle = '#9d4edd';
-            ctx.fillText('MILESTONES REACHED:', centerX, boxY + boxHeight + 30);
+            ctx.fillText('MILESTONES REACHED:', centerX, currentY);
+            currentY += 25;
             
-            ctx.font = '24px Arial';
-            const emojis = this.milestonesReached.map(m => m.emoji).join(' ');
-            ctx.fillText(emojis, centerX, boxY + boxHeight + 60);
+            // Draw milestone PNG images
+            const iconSize = 40;
+            const spacing = 10;
+            const totalWidth = this.milestonesReached.length * iconSize + (this.milestonesReached.length - 1) * spacing;
+            let iconX = centerX - totalWidth / 2 + iconSize / 2;
+            
+            const assetNameMap = {
+                'MOON': 'Moon', 'MARS': 'Mars', 'JUPITER': 'Jupiter', 'SATURN': 'Saturn',
+                'URANUS': 'Uranus', 'NEPTUNE': 'Neptune', 'PLUTO': 'Pluto', 'VOYAGER 1': 'Voyager1'
+            };
+            
+            for (const milestone of this.milestonesReached) {
+                const assetName = assetNameMap[milestone.name] || milestone.name;
+                const asset = this.assets[assetName];
+                if (asset && asset.complete) {
+                    ctx.drawImage(asset, iconX - iconSize/2, currentY, iconSize, iconSize);
+                }
+                iconX += iconSize + spacing;
+            }
+            currentY += iconSize + 20;
         }
         
         // Game title at bottom
         ctx.font = '10px "Press Start 2P", monospace';
         ctx.fillStyle = '#666';
-        ctx.fillText('TO MARS & BEYOND', centerX, rect.height - 20);
+        ctx.fillText('TO MARS & BEYOND', centerX, height - 30);
+        
+        // Disclaimer
+        ctx.font = '6px Arial';
+        ctx.fillStyle = '#444';
+        ctx.fillText('Fan-made game. Not affiliated with SpaceX.', centerX, height - 12);
         
         return canvas;
     },
@@ -892,8 +920,8 @@ const Game = {
     spawnObstacles() {
         // Reduce spawn rate on mobile devices
         const isMobile = this.width < 1000;
-        const baseRate = isMobile ? 0.007 : 0.02;
-        const spawnRate = baseRate + this.stats.altitude / (isMobile ? 200000 : 100000);
+        const baseRate = isMobile ? 0.005 : 0.02;
+        const spawnRate = baseRate + this.stats.altitude / (isMobile ? 250000 : 100000);
         
         if (Math.random() < spawnRate) {
             const isUFO = Math.random() < 0.1; // 10% chance for UFO
