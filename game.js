@@ -399,9 +399,8 @@ const Game = {
         this.milestonePlanet = null;
         this.gameSpeed = 1;
         
-        // Position for launch - stack starship on top of booster, resting on ground
-        // Offset slightly to the right to align with tower
-        this.player.x = this.width / 2 + 15;
+        // Position for launch - stack starship on top of booster, centered on screen
+        this.player.x = this.width / 2;
         // Calculate so bottom of booster is very close to ground (just 20px for flames)
         // Booster bottom = player.y + player.height/2 + booster.height
         this.player.y = this.height - 20 - this.booster.height - this.player.height / 2;
@@ -410,6 +409,9 @@ const Game = {
         // Position booster directly below starship (touching)
         this.booster.x = this.player.x;
         this.booster.y = this.player.y + this.player.height / 2 + this.booster.height / 2;
+        
+        // Position tower to the left of the rocket stack
+        this.tower.x = this.width / 2 - 35;
         this.booster.separated = false;
         this.booster.rotation = 0;
         this.booster.visible = true;
