@@ -2,6 +2,9 @@
 # 🚀 To Mars And Beyond!
 
 An 8-bit style SpaceX-themed game where you pilot Starship from Starbase, Texas to the edge of the solar system!
+Tech stack:
+🎨 **Nano Banana Pro** + **Photopea** for graphics
+🧠 **Claude Opus 4.5** - Literally everything else
 
 <img width="1092" height="616" alt="image" src="https://github.com/user-attachments/assets/9019750a-19d3-48b2-a0d0-cd3a79d4d419" />
 
@@ -15,7 +18,7 @@ An 8-bit style SpaceX-themed game where you pilot Starship from Starbase, Texas 
     </a>
   </h1>
 </div>
-
+ 
 ## 🎮 How to Play
 
 1. **Start**: Tap (mobile) or click (desktop) to launch Starship
