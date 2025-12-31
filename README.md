@@ -3,6 +3,8 @@
 An 8-bit style SpaceX Starship game where you pilot Starship from Starbase, Texas to the edge of the solar system!
 
 ![SpaceX](Assets/SpaceX.png)
+<img width="806" height="641" alt="image" src="https://github.com/user-attachments/assets/f340f12d-81bd-4b70-9484-cd705ab18859" />
+
 
 ## 🎮 How to Play
 
