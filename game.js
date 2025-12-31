@@ -40,6 +40,12 @@ const SoundGenerator = {
             case 'heart':
                 this.playHeart();
                 break;
+            case 'shield':
+                this.playShield();
+                break;
+            case 'powerup':
+                this.playPowerup();
+                break;
             case 'hit':
                 this.playHit();
                 break;
@@ -99,6 +105,22 @@ const SoundGenerator = {
         this.createOscillator(523, 'sine', 0.1);
         setTimeout(() => this.createOscillator(659, 'sine', 0.1), 80);
         setTimeout(() => this.createOscillator(784, 'sine', 0.15), 160);
+    },
+    
+    playShield() {
+        // Metallic, protective sound for shield pickup
+        this.createOscillator(440, 'triangle', 0.1);
+        setTimeout(() => this.createOscillator(554, 'triangle', 0.1), 60);
+        setTimeout(() => this.createOscillator(659, 'triangle', 0.1), 120);
+        setTimeout(() => this.createOscillator(880, 'triangle', 0.15), 180);
+    },
+    
+    playPowerup() {
+        // Exciting, energetic sound for 2x powerup
+        const notes = [392, 494, 587, 784, 988];
+        notes.forEach((freq, i) => {
+            setTimeout(() => this.createOscillator(freq, 'square', 0.1), i * 40);
+        });
     },
 
     playHit() {
@@ -205,18 +227,33 @@ const Game = {
         score: 0,
         coins: 0,
         hearts: 3,
-        maxHearts: 3
+        maxHearts: 3,
+        shields: 0,
+        maxShields: 2
+    },
+    
+    // Power-ups
+    doublePoints: {
+        active: false,
+        endTime: 0
     },
     
     // Objects
     obstacles: [],
     coins: [],
     hearts: [], // Collectible hearts for health
+    shields: [], // Shield pickups
+    powerUps: [], // 2x power-ups
     stars: [],
     shootingStars: [],
     galaxies: [],
     blackHoles: [],
     aliens: [],
+    
+    // Special one-time appearances
+    specialObjects: [], // Webb and Starman
+    webbSpawned: false,
+    starmanSpawned: false,
     
     // Milestone visual
     milestonePlanet: null, // Current approaching planet for background display
@@ -292,8 +329,9 @@ const Game = {
         const assetList = [
             'Starship', 'Booster', 'Tower', 'Flames', 'SpaceX', 'Palmtree',
             'Asteroid1', 'Asteroid2', 'Asteroid3',
-            'Dogecoin', 'UFO', 'Heart',
+            'Dogecoin', 'UFO', 'Heart', 'Shield', '2x',
             'Galaxy1', 'Galaxy2', 'Galaxy3', 'Blackhole',
+            'Webb', 'Starman',
             'Moon', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto', 'Voyager1'
         ];
         
@@ -396,6 +434,13 @@ const Game = {
         this.obstacles = [];
         this.coins = [];
         this.hearts = [];
+        this.shields = [];
+        this.powerUps = [];
+        this.specialObjects = [];
+        this.webbSpawned = false;
+        this.starmanSpawned = false;
+        this.stats.shields = 0;
+        this.doublePoints = { active: false, endTime: 0 };
         this.milestonePlanet = null;
         this.gameSpeed = 1;
         
@@ -794,6 +839,15 @@ const Game = {
         // Spawn hearts (health pickups)
         this.spawnHearts();
         
+        // Spawn shields
+        this.spawnShields();
+        
+        // Spawn 2x power-ups
+        this.spawnPowerUps();
+        
+        // Spawn special objects (Webb, Starman)
+        this.spawnSpecialObjects();
+        
         // Spawn space objects
         this.spawnSpaceObjects();
         
@@ -805,6 +859,18 @@ const Game = {
         
         // Update heart pickups
         this.updateHeartPickups();
+        
+        // Update shield pickups
+        this.updateShieldPickups();
+        
+        // Update 2x power-up pickups
+        this.updatePowerUpPickups();
+        
+        // Update special objects (Webb, Starman)
+        this.updateSpecialObjects();
+        
+        // Update double points timer
+        this.updateDoublePoints();
         
         // Update milestone planet visibility
         this.updateMilestonePlanet();
@@ -822,7 +888,10 @@ const Game = {
     },
     
     spawnObstacles() {
-        const spawnRate = 0.02 + this.stats.altitude / 100000;
+        // Reduce spawn rate on mobile devices
+        const isMobile = this.width < 600;
+        const baseRate = isMobile ? 0.012 : 0.02;
+        const spawnRate = baseRate + this.stats.altitude / (isMobile ? 150000 : 100000);
         
         if (Math.random() < spawnRate) {
             const isUFO = Math.random() < 0.1; // 10% chance for UFO
@@ -868,6 +937,70 @@ const Game = {
                 speed: 60 * this.gameSpeed,
                 pulse: 0
             });
+        }
+    },
+    
+    spawnShields() {
+        // Shields are rare - only spawn if player has less than max shields
+        if (this.stats.shields < this.stats.maxShields && Math.random() < 0.0006) {
+            this.shields.push({
+                x: Math.random() * (this.width - 40) + 20,
+                y: -30,
+                width: 35,
+                height: 35,
+                speed: 55 * this.gameSpeed,
+                pulse: 0
+            });
+        }
+    },
+    
+    spawnPowerUps() {
+        // 2x power-ups are rare
+        if (!this.doublePoints.active && Math.random() < 0.0004) {
+            this.powerUps.push({
+                x: Math.random() * (this.width - 40) + 20,
+                y: -30,
+                width: 35,
+                height: 35,
+                speed: 50 * this.gameSpeed,
+                rotation: 0
+            });
+        }
+    },
+    
+    spawnSpecialObjects() {
+        // Webb and Starman appear once each, randomly before Mars milestone
+        const marsDistance = 3500; // Mars gameDistance
+        
+        // Only spawn before reaching Mars
+        if (this.stats.altitude < marsDistance) {
+            // Spawn Webb at a random point (20% through to Mars)
+            if (!this.webbSpawned && this.stats.altitude > marsDistance * 0.2 && Math.random() < 0.002) {
+                const fromLeft = Math.random() < 0.5;
+                this.specialObjects.push({
+                    x: fromLeft ? -60 : this.width + 60,
+                    y: this.height * 0.3,
+                    width: 60,
+                    height: 60,
+                    speedX: fromLeft ? 40 : -40, // Move inward
+                    type: 'Webb'
+                });
+                this.webbSpawned = true;
+            }
+            
+            // Spawn Starman at a different random point
+            if (!this.starmanSpawned && this.stats.altitude > marsDistance * 0.4 && Math.random() < 0.002) {
+                const fromLeft = Math.random() < 0.5;
+                this.specialObjects.push({
+                    x: fromLeft ? -60 : this.width + 60,
+                    y: this.height * 0.4,
+                    width: 50,
+                    height: 70,
+                    speedX: fromLeft ? 35 : -35, // Move inward
+                    type: 'Starman'
+                });
+                this.starmanSpawned = true;
+            }
         }
     },
     
@@ -945,21 +1078,10 @@ const Game = {
             
             // Collision check
             if (this.checkCollision(this.player, obs)) {
-                if (obs.type === 'ufo') {
-                    SoundGenerator.play('ufo');
-                    this.stats.hearts = 0;
-                } else {
-                    SoundGenerator.play('hit');
-                    this.stats.hearts--;
-                }
-                
-                this.showDamageFlash();
-                this.updateHearts();
+                const damage = obs.type === 'ufo' ? 2 : 1;
+                SoundGenerator.play(obs.type === 'ufo' ? 'ufo' : 'hit');
+                this.takeDamage(damage);
                 this.obstacles.splice(i, 1);
-                
-                if (this.stats.hearts <= 0) {
-                    this.gameOver();
-                }
             }
         }
     },
@@ -979,8 +1101,10 @@ const Game = {
             if (this.checkCollision(this.player, coin)) {
                 SoundGenerator.play('coin');
                 this.stats.coins++;
-                this.stats.score += 500;
-                this.showCoinCollect(coin.x, coin.y, '+500');
+                const basePoints = 1000;
+                const points = this.doublePoints.active ? basePoints * 2 : basePoints;
+                this.stats.score += points;
+                this.showCoinCollect(coin.x, coin.y, '+' + points);
                 this.coins.splice(i, 1);
             }
         }
@@ -1007,6 +1131,70 @@ const Game = {
                 }
                 this.hearts.splice(i, 1);
             }
+        }
+    },
+    
+    updateShieldPickups() {
+        for (let i = this.shields.length - 1; i >= 0; i--) {
+            const shield = this.shields[i];
+            shield.y += shield.speed * this.deltaTime;
+            shield.pulse += 5 * this.deltaTime;
+            
+            if (shield.y > this.height + 50) {
+                this.shields.splice(i, 1);
+                continue;
+            }
+            
+            // Collision check
+            if (this.checkCollision(this.player, shield)) {
+                if (this.stats.shields < this.stats.maxShields) {
+                    SoundGenerator.play('shield');
+                    this.stats.shields++;
+                    this.updateShieldUI();
+                    this.showCoinCollect(shield.x, shield.y, '+🛡️');
+                }
+                this.shields.splice(i, 1);
+            }
+        }
+    },
+    
+    updatePowerUpPickups() {
+        for (let i = this.powerUps.length - 1; i >= 0; i--) {
+            const powerUp = this.powerUps[i];
+            powerUp.y += powerUp.speed * this.deltaTime;
+            powerUp.rotation += 2 * this.deltaTime;
+            
+            if (powerUp.y > this.height + 50) {
+                this.powerUps.splice(i, 1);
+                continue;
+            }
+            
+            // Collision check
+            if (this.checkCollision(this.player, powerUp)) {
+                SoundGenerator.play('powerup');
+                this.doublePoints.active = true;
+                this.doublePoints.endTime = Date.now() + 5000; // 5 seconds
+                this.showCoinCollect(powerUp.x, powerUp.y, '2x POINTS!');
+                this.powerUps.splice(i, 1);
+            }
+        }
+    },
+    
+    updateSpecialObjects() {
+        for (let i = this.specialObjects.length - 1; i >= 0; i--) {
+            const obj = this.specialObjects[i];
+            obj.x += obj.speedX * this.deltaTime;
+            
+            // Remove if off screen
+            if (obj.x < -100 || obj.x > this.width + 100) {
+                this.specialObjects.splice(i, 1);
+            }
+        }
+    },
+    
+    updateDoublePoints() {
+        if (this.doublePoints.active && Date.now() > this.doublePoints.endTime) {
+            this.doublePoints.active = false;
         }
     },
     
@@ -1132,12 +1320,12 @@ const Game = {
             
             if (this.checkCollision(this.player, ufoHitbox)) {
                 SoundGenerator.play('ufo');
-                this.stats.hearts = 0;
-                this.showDamageFlash();
-                this.updateHearts();
+                this.takeDamage(2);
                 this.aliens.splice(i, 1);
-                this.gameOver();
-                return;
+                
+                if (this.stats.hearts <= 0) {
+                    return;
+                }
             }
         }
     },
@@ -1220,7 +1408,16 @@ const Game = {
     
     updateUI() {
         document.getElementById('altitude').textContent = this.formatDistance(this.stats.altitude);
-        document.getElementById('score').textContent = `SCORE: ${this.stats.score.toLocaleString()}`;
+        const scoreEl = document.getElementById('score');
+        if (this.doublePoints.active) {
+            scoreEl.textContent = `2x SCORE: ${this.stats.score.toLocaleString()}`;
+            scoreEl.style.color = '#00ff00';
+            scoreEl.style.textShadow = '0 0 10px #00ff00';
+        } else {
+            scoreEl.textContent = `SCORE: ${this.stats.score.toLocaleString()}`;
+            scoreEl.style.color = '';
+            scoreEl.style.textShadow = '';
+        }
     },
     
     updateHearts() {
@@ -1236,6 +1433,52 @@ const Game = {
                 heart.style.filter = 'grayscale(100%)';
             }
             container.appendChild(heart);
+        }
+        // Also update shields UI
+        this.updateShieldUI();
+    },
+    
+    updateShieldUI() {
+        let container = document.getElementById('shields');
+        if (!container) {
+            // Create shields container if it doesn't exist
+            const heartsContainer = document.getElementById('hearts');
+            container = document.createElement('div');
+            container.id = 'shields';
+            container.className = 'shields-container';
+            heartsContainer.parentNode.insertBefore(container, heartsContainer.nextSibling);
+        }
+        container.innerHTML = '';
+        for (let i = 0; i < this.stats.shields; i++) {
+            const shield = document.createElement('img');
+            shield.className = 'shield';
+            shield.src = 'Assets/Shield.png';
+            shield.alt = 'Shield';
+            container.appendChild(shield);
+        }
+    },
+    
+    takeDamage(amount) {
+        let remainingDamage = amount;
+        
+        // Shields absorb damage first (1 shield = 1 heart of protection)
+        if (this.stats.shields > 0) {
+            const shieldsUsed = Math.min(this.stats.shields, remainingDamage);
+            this.stats.shields -= shieldsUsed;
+            remainingDamage -= shieldsUsed;
+            this.updateShieldUI();
+        }
+        
+        // Remaining damage goes to hearts
+        if (remainingDamage > 0) {
+            this.stats.hearts -= remainingDamage;
+        }
+        
+        this.showDamageFlash();
+        this.updateHearts();
+        
+        if (this.stats.hearts <= 0) {
+            this.gameOver();
         }
     },
     
@@ -1371,6 +1614,15 @@ const Game = {
         
         // Heart pickups
         this.renderHeartPickups();
+        
+        // Shield pickups
+        this.renderShieldPickups();
+        
+        // Power-up pickups
+        this.renderPowerUpPickups();
+        
+        // Special objects (Webb, Starman)
+        this.renderSpecialObjects();
     },
     
     renderStars() {
@@ -1725,6 +1977,84 @@ const Game = {
         });
     },
     
+    renderShieldPickups() {
+        const ctx = this.ctx;
+        const shieldAsset = this.assets.Shield;
+        
+        this.shields.forEach(shield => {
+            ctx.save();
+            ctx.translate(shield.x, shield.y);
+            
+            // Pulsing effect
+            const scale = 1 + Math.sin(shield.pulse) * 0.15;
+            ctx.scale(scale, scale);
+            
+            // Blue glow effect
+            ctx.shadowColor = '#00aaff';
+            ctx.shadowBlur = 25;
+            
+            if (shieldAsset && shieldAsset.complete) {
+                ctx.drawImage(shieldAsset, -shield.width/2, -shield.height/2, shield.width, shield.height);
+            } else {
+                // Fallback to emoji
+                ctx.font = '32px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🛡️', 0, 0);
+            }
+            
+            ctx.restore();
+        });
+    },
+    
+    renderPowerUpPickups() {
+        const ctx = this.ctx;
+        const powerUpAsset = this.assets['2x'];
+        
+        this.powerUps.forEach(powerUp => {
+            ctx.save();
+            ctx.translate(powerUp.x, powerUp.y);
+            ctx.rotate(powerUp.rotation);
+            
+            // Green glow effect
+            ctx.shadowColor = '#00ff00';
+            ctx.shadowBlur = 30;
+            
+            if (powerUpAsset && powerUpAsset.complete) {
+                ctx.drawImage(powerUpAsset, -powerUp.width/2, -powerUp.height/2, powerUp.width, powerUp.height);
+            } else {
+                // Fallback
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 24px "Press Start 2P", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('2x', 0, 0);
+            }
+            
+            ctx.restore();
+        });
+    },
+    
+    renderSpecialObjects() {
+        const ctx = this.ctx;
+        
+        this.specialObjects.forEach(obj => {
+            ctx.save();
+            ctx.translate(obj.x, obj.y);
+            
+            // Golden glow for special objects
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 30;
+            
+            const asset = this.assets[obj.type];
+            if (asset && asset.complete) {
+                ctx.drawImage(asset, -obj.width/2, -obj.height/2, obj.width, obj.height);
+            }
+            
+            ctx.restore();
+        });
+    },
+    
     renderMilestonePlanetBackground() {
         // Show the approaching milestone planet prominently in background
         if (!this.milestonePlanet) return;
@@ -1764,7 +2094,19 @@ const Game = {
         ctx.fill();
         
         if (planetAsset && planetAsset.complete) {
-            ctx.drawImage(planetAsset, x - size/2, y - size/2, size, size);
+            // Maintain aspect ratio for planets like Saturn that are wider
+            const aspectRatio = planetAsset.width / planetAsset.height;
+            let drawWidth, drawHeight;
+            if (aspectRatio > 1) {
+                // Wider than tall (like Saturn)
+                drawWidth = size * aspectRatio;
+                drawHeight = size;
+            } else {
+                // Taller than wide or square
+                drawWidth = size;
+                drawHeight = size / aspectRatio;
+            }
+            ctx.drawImage(planetAsset, x - drawWidth/2, y - drawHeight/2, drawWidth, drawHeight);
         } else {
             // Fallback - draw a colored circle based on planet name
             const colors = {

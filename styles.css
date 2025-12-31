@@ -316,6 +316,21 @@ html, body {
     100% { transform: scale(0); opacity: 0; }
 }
 
+/* Shields container */
+.shields-container {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.shields-container .shield {
+    width: clamp(22px, 5vw, 32px);
+    height: auto;
+    transition: transform 0.1s;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 5px #00aaff);
+}
+
 .score-container {
     text-align: right;
 }
