@@ -3,7 +3,7 @@
 
 An 8-bit style SpaceX-themed game where you pilot Starship from Starbase, Texas to the edge of the solar system!
 
-Game was vibe coded in a couple hours.
+Vibe coded this in a couple hours. Not bad Claude, not bad.
 
 Tech stack:
 
