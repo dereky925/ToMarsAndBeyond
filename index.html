@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>To Mars And Beyond - SpaceX Starship Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen">
+            <div class="logo-container">
+                <img src="Assets/SpaceX.png" alt="SpaceX" id="spacex-logo">
+            </div>
+            <h1 class="game-title">TO MARS<br><span class="highlight">& BEYOND</span></h1>
+            <p class="subtitle">STARSHIP MISSION</p>
+            <div class="start-prompt blink">
+                <span class="mobile-text">TAP TO LAUNCH</span>
+                <span class="desktop-text">CLICK TO LAUNCH</span>
+            </div>
+            <div class="controls-hint">
+                <p>🎮 SWIPE OR MOVE MOUSE TO DODGE</p>
+                <p>💰 COLLECT DOGECOINS FOR BONUS</p>
+                <p>🚀 REACH THE STARS!</p>
+            </div>
+        </div>
+        
+        <!-- Game UI Overlay -->
+        <div id="game-ui" class="hidden">
+            <div class="ui-top">
+                <div class="hearts-container" id="hearts">
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                </div>
+                <div class="score-container">
+                    <div class="altitude" id="altitude">0 KM</div>
+                    <div class="score" id="score">SCORE: 0</div>
+                </div>
+            </div>
+            <div class="milestone-flash hidden" id="milestone-flash"></div>
+        </div>
+        
+        <!-- Game Over Screen -->
+        <div id="gameover-screen" class="screen hidden">
+            <h1 class="gameover-title">GAME OVER</h1>
+            <div class="medal-container" id="medal-container">
+                <div class="medal" id="medal">🥉</div>
+                <p class="medal-text" id="medal-text">BRONZE PILOT</p>
+            </div>
+            <div class="final-stats">
+                <p class="final-altitude" id="final-altitude">ALTITUDE: 0 KM</p>
+                <p class="final-score" id="final-score">FINAL SCORE: 0</p>
+                <p class="coins-collected" id="coins-collected">DOGECOINS: 0</p>
+            </div>
+            <div class="milestones-reached" id="milestones-reached">
+                <p class="milestones-title">MILESTONES REACHED:</p>
+                <div class="milestones-list" id="milestones-list"></div>
+            </div>
+            <div class="gameover-buttons">
+                <button class="game-btn retry-btn" id="retry-btn">🔄 RETRY</button>
+                <button class="game-btn share-btn" id="share-btn">📤 SHARE</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
+
