@@ -892,7 +892,7 @@ const Game = {
     spawnObstacles() {
         // Reduce spawn rate on mobile devices
         const isMobile = this.width < 600;
-        const baseRate = isMobile ? 0.07 : 0.02;
+        const baseRate = isMobile ? 0.007 : 0.02;
         const spawnRate = baseRate + this.stats.altitude / (isMobile ? 150000 : 100000);
         
         if (Math.random() < spawnRate) {
