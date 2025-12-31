@@ -76,6 +76,122 @@ html, body {
         #ff9f1c 95%,
         #ffcc00 100%
     );
+    overflow: hidden;
+}
+
+/* Stars on start screen */
+.start-stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    pointer-events: none;
+    background-image: 
+        radial-gradient(2px 2px at 20px 30px, white, transparent),
+        radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+        radial-gradient(1px 1px at 90px 40px, white, transparent),
+        radial-gradient(2px 2px at 130px 80px, rgba(255,255,255,0.9), transparent),
+        radial-gradient(1px 1px at 160px 20px, white, transparent),
+        radial-gradient(2px 2px at 200px 50px, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 250px 35px, white, transparent),
+        radial-gradient(2px 2px at 300px 60px, rgba(255,255,255,0.8), transparent),
+        radial-gradient(1px 1px at 350px 25px, white, transparent),
+        radial-gradient(2px 2px at 400px 45px, rgba(255,255,255,0.9), transparent),
+        radial-gradient(1px 1px at 50px 100px, white, transparent),
+        radial-gradient(2px 2px at 100px 130px, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 180px 110px, white, transparent),
+        radial-gradient(2px 2px at 220px 140px, rgba(255,255,255,0.8), transparent),
+        radial-gradient(1px 1px at 280px 95px, white, transparent),
+        radial-gradient(2px 2px at 320px 125px, rgba(255,255,255,0.6), transparent),
+        radial-gradient(1px 1px at 380px 105px, white, transparent),
+        radial-gradient(2px 2px at 60px 170px, rgba(255,255,255,0.9), transparent),
+        radial-gradient(1px 1px at 120px 190px, white, transparent),
+        radial-gradient(2px 2px at 200px 175px, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 270px 200px, white, transparent),
+        radial-gradient(2px 2px at 340px 180px, rgba(255,255,255,0.8), transparent);
+    background-size: 100% 100%;
+    animation: twinkleStars 3s ease-in-out infinite alternate;
+}
+
+@keyframes twinkleStars {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* Silhouettes container */
+.start-silhouettes {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 200px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Palm tree silhouettes */
+.palm-tree {
+    position: absolute;
+    bottom: 0;
+    width: 60px;
+    height: 100px;
+    background: #000;
+    clip-path: polygon(
+        50% 0%, 
+        15% 25%, 0% 20%, 20% 35%, 5% 40%, 25% 45%,
+        30% 50%, 35% 100%, 65% 100%, 70% 50%,
+        75% 45%, 95% 40%, 80% 35%, 100% 20%, 85% 25%
+    );
+    opacity: 0.9;
+}
+
+.palm-1 { left: 5%; height: 80px; width: 50px; }
+.palm-2 { left: 15%; height: 110px; width: 65px; }
+.palm-3 { right: 10%; height: 90px; width: 55px; }
+.palm-4 { right: 20%; height: 70px; width: 45px; }
+
+/* Rocket and tower silhouette */
+.rocket-silhouette {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: flex-end;
+    height: 180px;
+}
+
+.silhouette {
+    filter: brightness(0) opacity(0.9);
+    image-rendering: pixelated;
+}
+
+.tower-sil {
+    height: 160px;
+    width: auto;
+    position: relative;
+    z-index: 1;
+}
+
+.stack-sil {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-left: -25px;
+    position: relative;
+    z-index: 2;
+}
+
+.starship-sil {
+    height: 70px;
+    width: auto;
+}
+
+.booster-sil {
+    height: 85px;
+    width: auto;
+    margin-top: -2px;
 }
 
 .game-title {
@@ -165,12 +281,14 @@ html, body {
 .hearts-container {
     display: flex;
     gap: 5px;
-    font-size: clamp(20px, 5vw, 32px);
     filter: drop-shadow(2px 2px 0 #000);
 }
 
 .heart {
+    width: clamp(24px, 6vw, 36px);
+    height: auto;
     transition: transform 0.1s, opacity 0.3s;
+    image-rendering: pixelated;
 }
 
 .heart.lost {

@@ -13,10 +13,19 @@ const SoundGenerator = {
         if (!audioCtx) {
             audioCtx = new AudioContext();
         }
+        // Resume audio context if suspended (browser autoplay policy)
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
     },
 
     play(type) {
         if (!audioCtx) return;
+        
+        // Ensure audio context is running
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
         
         switch(type) {
             case 'launch':
@@ -47,16 +56,22 @@ const SoundGenerator = {
     },
 
     createOscillator(freq, type = 'square', duration = 0.1) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
+        try {
+            if (!audioCtx || audioCtx.state === 'closed') return;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime); // Slightly louder
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        } catch (e) {
+            console.warn('Sound error:', e);
+        }
     },
 
     playLaunch() {
@@ -166,7 +181,9 @@ const Game = {
     tower: {
         visible: true,
         x: 0,
-        y: 0
+        y: 0,
+        initialY: 0,
+        offsetY: 0  // How far the tower has scrolled down
     },
     
     // Game stats
@@ -369,12 +386,12 @@ const Game = {
         this.milestonePlanet = null;
         this.gameSpeed = 1;
         
-        // Position for launch - stack starship on top of booster, resting near ground
-        this.player.x = this.width / 2;
-        // Calculate so bottom of booster is near ground (leaving room for flames)
+        // Position for launch - stack starship on top of booster, resting on ground
+        // Offset slightly to the right to align with tower
+        this.player.x = this.width / 2 + 15;
+        // Calculate so bottom of booster is very close to ground (just 20px for flames)
         // Booster bottom = player.y + player.height/2 + booster.height
-        // We want booster bottom at about height - 80 (for flames)
-        this.player.y = this.height - 80 - this.booster.height - this.player.height / 2;
+        this.player.y = this.height - 20 - this.booster.height - this.player.height / 2;
         this.player.targetX = this.player.x;
         
         // Position booster directly below starship (touching)
@@ -386,6 +403,8 @@ const Game = {
         this.booster.velocityY = 0;
         
         this.tower.visible = true;
+        this.tower.offsetY = 0;
+        this.tower.initialY = this.height;
         this.flames.visible = false;
         this.flames.underBooster = true;
         
@@ -654,7 +673,10 @@ const Game = {
             case 1: // Liftoff
                 this.player.y -= 100 * this.deltaTime;
                 this.booster.y = this.player.y + this.player.height / 2 + this.booster.height / 2;
-                this.tower.visible = this.player.y > this.height - 300;
+                // Scroll tower down as rocket rises
+                this.tower.offsetY += 100 * this.deltaTime;
+                // Tower is visible until it scrolls off the bottom of the screen
+                this.tower.visible = (this.tower.initialY + this.tower.offsetY) < this.height + 250;
                 
                 if (this.launchTimer > 2) {
                     this.launchPhase = 2;
@@ -664,6 +686,9 @@ const Game = {
                 
             case 2: // Ascending - move to center
                 this.player.y -= 150 * this.deltaTime;
+                // Continue scrolling tower down
+                this.tower.offsetY += 150 * this.deltaTime;
+                this.tower.visible = (this.tower.initialY + this.tower.offsetY) < this.height + 250;
                 this.booster.y = this.player.y + this.player.height / 2 + this.booster.height / 2;
                 
                 // Move toward center
@@ -802,8 +827,8 @@ const Game = {
     },
     
     spawnHearts() {
-        // Hearts are rare - only spawn if player has lost health
-        if (this.stats.hearts < this.stats.maxHearts && Math.random() < 0.003) {
+        // Hearts are very rare - only spawn if player has lost health
+        if (this.stats.hearts < this.stats.maxHearts && Math.random() < 0.0008) {
             this.hearts.push({
                 x: Math.random() * (this.width - 40) + 20,
                 y: -30,
@@ -956,7 +981,14 @@ const Game = {
     
     updateMilestonePlanet() {
         if (this.currentMilestoneIndex >= SCALED_MILESTONES.length) {
-            this.milestonePlanet = null;
+            // Check if there's still a planet scrolling off
+            if (this.milestonePlanet && this.milestonePlanet.y < this.height + 200) {
+                // Continue scrolling the last planet off screen
+                this.milestonePlanet.y += 80 * this.deltaTime;
+                this.milestonePlanet.opacity = Math.max(0, this.milestonePlanet.opacity - 0.3 * this.deltaTime);
+            } else {
+                this.milestonePlanet = null;
+            }
             return;
         }
         
@@ -971,13 +1003,34 @@ const Game = {
                 progress: progress,
                 size: 80 + progress * 200, // Grows from 80 to 280
                 y: -100 + progress * (this.height * 0.3), // Moves down into view
-                opacity: Math.min(progress * 1.5, 1)
+                opacity: Math.min(progress * 1.5, 1),
+                passed: false
             };
         } else if (distanceToMilestone <= 0) {
-            // Just passed milestone, fade out
-            this.milestonePlanet = null;
+            // Passed the milestone - continue scrolling planet down and off screen
+            if (this.milestonePlanet && !this.milestonePlanet.passed) {
+                this.milestonePlanet.passed = true;
+            }
+            
+            if (this.milestonePlanet) {
+                // Scroll the planet down past the player
+                this.milestonePlanet.y += 120 * this.deltaTime;
+                
+                // Fade out as it goes off screen
+                if (this.milestonePlanet.y > this.height * 0.5) {
+                    this.milestonePlanet.opacity = Math.max(0, this.milestonePlanet.opacity - 0.5 * this.deltaTime);
+                }
+                
+                // Remove when fully off screen
+                if (this.milestonePlanet.y > this.height + 200 || this.milestonePlanet.opacity <= 0) {
+                    this.milestonePlanet = null;
+                }
+            }
         } else {
-            this.milestonePlanet = null;
+            // Not close enough yet - but don't clear if a planet is still scrolling off
+            if (!this.milestonePlanet || (this.milestonePlanet && this.milestonePlanet.y > this.height + 200)) {
+                this.milestonePlanet = null;
+            }
         }
     },
     
@@ -1034,9 +1087,32 @@ const Game = {
             alien.x += alien.speedX * this.deltaTime;
             alien.wobbleOffset += (alien.wobbleSpeed || 3) * this.deltaTime;
             
+            // Update y position with wobble for collision detection
+            alien.currentY = alien.y + Math.sin(alien.wobbleOffset) * 15;
+            
+            // Remove if off screen
             if ((alien.speedX > 0 && alien.x > this.width + 80) ||
                 (alien.speedX < 0 && alien.x < -80)) {
                 this.aliens.splice(i, 1);
+                continue;
+            }
+            
+            // Collision check - UFOs are deadly! Instant game over!
+            const ufoHitbox = {
+                x: alien.x,
+                y: alien.currentY,
+                width: alien.width,
+                height: alien.height
+            };
+            
+            if (this.checkCollision(this.player, ufoHitbox)) {
+                SoundGenerator.play('ufo');
+                this.stats.hearts = 0;
+                this.showDamageFlash();
+                this.updateHearts();
+                this.aliens.splice(i, 1);
+                this.gameOver();
+                return;
             }
         }
     },
@@ -1113,9 +1189,14 @@ const Game = {
         const container = document.getElementById('hearts');
         container.innerHTML = '';
         for (let i = 0; i < this.stats.maxHearts; i++) {
-            const heart = document.createElement('span');
+            const heart = document.createElement('img');
             heart.className = 'heart';
-            heart.textContent = i < this.stats.hearts ? '❤️' : '🖤';
+            heart.src = 'Assets/Heart.png';
+            heart.alt = 'Heart';
+            if (i >= this.stats.hearts) {
+                heart.style.opacity = '0.3';
+                heart.style.filter = 'grayscale(100%)';
+            }
             container.appendChild(heart);
         }
     },
@@ -1351,15 +1432,18 @@ const Game = {
         const ctx = this.ctx;
         const tower = this.assets.Tower;
         
+        // Tower scrolls down as rocket launches
+        const towerY = this.height + this.tower.offsetY;
+        
         if (tower && tower.complete) {
             const scale = 0.8;
             const w = 100 * scale;
             const h = 200 * scale;
-            ctx.drawImage(tower, this.tower.x - w/2, this.height - h, w, h);
+            ctx.drawImage(tower, this.tower.x - w/2, towerY - h, w, h);
         } else {
             // Fallback tower
             ctx.fillStyle = '#666';
-            ctx.fillRect(this.tower.x - 20, this.height - 150, 40, 150);
+            ctx.fillRect(this.tower.x - 20, towerY - 150, 40, 150);
         }
     },
     
@@ -1555,8 +1639,18 @@ const Game = {
         const ctx = this.ctx;
         const planet = this.milestonePlanet;
         
-        // Get the asset name (remove spaces, handle "Voyager 1" -> "Voyager1")
-        const assetName = planet.name.replace(' ', '');
+        // Map milestone names to asset names (handle case and spaces)
+        const assetNameMap = {
+            'MOON': 'Moon',
+            'MARS': 'Mars',
+            'JUPITER': 'Jupiter',
+            'SATURN': 'Saturn',
+            'URANUS': 'Uranus',
+            'NEPTUNE': 'Neptune',
+            'PLUTO': 'Pluto',
+            'VOYAGER 1': 'Voyager1'
+        };
+        const assetName = assetNameMap[planet.name] || planet.name;
         const planetAsset = this.assets[assetName];
         
         ctx.save();
