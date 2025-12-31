@@ -425,10 +425,13 @@ const Game = {
             score: 0,
             coins: 0,
             hearts: 3,
-            maxHearts: 3
+            maxHearts: 3,
+            shields: 0,
+            maxShields: 2
         };
         
         this.updateHearts();
+        this.updateShieldUI();
         this.milestonesReached = [];
         this.currentMilestoneIndex = 0;
         this.obstacles = [];
@@ -439,7 +442,6 @@ const Game = {
         this.specialObjects = [];
         this.webbSpawned = false;
         this.starmanSpawned = false;
-        this.stats.shields = 0;
         this.doublePoints = { active: false, endTime: 0 };
         this.milestonePlanet = null;
         this.gameSpeed = 1;
@@ -941,8 +943,8 @@ const Game = {
     },
     
     spawnShields() {
-        // Shields spawn regardless of current count, but only collectible if below max
-        if (Math.random() < 0.0015) {
+        // Shields are rare
+        if (Math.random() < 0.0004) {
             this.shields.push({
                 x: Math.random() * (this.width - 40) + 20,
                 y: -30,
@@ -969,38 +971,45 @@ const Game = {
     },
     
     spawnSpecialObjects() {
-        // Webb and Starman appear once each, randomly before Mars milestone
+        // Webb and Starman appear once each at different times before Mars
         const marsDistance = 3500; // Mars gameDistance
         
-        // Only spawn before reaching Mars
-        if (this.stats.altitude < marsDistance) {
-            // Spawn Webb at a random point (20% through to Mars)
-            if (!this.webbSpawned && this.stats.altitude > marsDistance * 0.2 && Math.random() < 0.005) {
-                const fromLeft = Math.random() < 0.5;
-                this.specialObjects.push({
-                    x: fromLeft ? -100 : this.width + 100,
-                    y: this.height * 0.25 + Math.random() * this.height * 0.3,
-                    width: 100,
-                    height: 100,
-                    speedX: fromLeft ? 30 : -30, // Slow drift
-                    type: 'Webb'
-                });
-                this.webbSpawned = true;
-            }
-            
-            // Spawn Starman at a different random point
-            if (!this.starmanSpawned && this.stats.altitude > marsDistance * 0.4 && Math.random() < 0.005) {
-                const fromLeft = Math.random() < 0.5;
-                this.specialObjects.push({
-                    x: fromLeft ? -100 : this.width + 100,
-                    y: this.height * 0.2 + Math.random() * this.height * 0.4,
-                    width: 80,
-                    height: 100,
-                    speedX: fromLeft ? 25 : -25, // Slow drift
-                    type: 'Starman'
-                });
-                this.starmanSpawned = true;
-            }
+        // Webb appears early: between 10% and 40% of distance to Mars
+        const webbWindowStart = marsDistance * 0.1;
+        const webbWindowEnd = marsDistance * 0.4;
+        if (!this.webbSpawned && 
+            this.stats.altitude > webbWindowStart && 
+            this.stats.altitude < webbWindowEnd && 
+            Math.random() < 0.008) {
+            const fromLeft = Math.random() < 0.5;
+            this.specialObjects.push({
+                x: fromLeft ? -100 : this.width + 100,
+                y: this.height * 0.25 + Math.random() * this.height * 0.3,
+                width: 100,
+                height: 100,
+                speedX: fromLeft ? 30 : -30,
+                type: 'Webb'
+            });
+            this.webbSpawned = true;
+        }
+        
+        // Starman appears later: between 55% and 90% of distance to Mars
+        const starmanWindowStart = marsDistance * 0.55;
+        const starmanWindowEnd = marsDistance * 0.9;
+        if (!this.starmanSpawned && 
+            this.stats.altitude > starmanWindowStart && 
+            this.stats.altitude < starmanWindowEnd && 
+            Math.random() < 0.008) {
+            const fromLeft = Math.random() < 0.5;
+            this.specialObjects.push({
+                x: fromLeft ? -100 : this.width + 100,
+                y: this.height * 0.2 + Math.random() * this.height * 0.4,
+                width: 80,
+                height: 100,
+                speedX: fromLeft ? 25 : -25,
+                type: 'Starman'
+            });
+            this.starmanSpawned = true;
         }
     },
     
@@ -1441,19 +1450,28 @@ const Game = {
     updateShieldUI() {
         let container = document.getElementById('shields');
         if (!container) {
-            // Create shields container if it doesn't exist
+            // Create shields container if it doesn't exist - place it in the hearts container
             const heartsContainer = document.getElementById('hearts');
-            container = document.createElement('div');
+            container = document.createElement('span');
             container.id = 'shields';
-            container.className = 'shields-container';
-            heartsContainer.parentNode.insertBefore(container, heartsContainer.nextSibling);
+            container.style.marginLeft = '10px';
+            container.style.display = 'inline-flex';
+            container.style.alignItems = 'center';
+            container.style.gap = '3px';
+            container.style.verticalAlign = 'middle';
+            heartsContainer.appendChild(container);
         }
         container.innerHTML = '';
         for (let i = 0; i < this.stats.shields; i++) {
             const shield = document.createElement('img');
-            shield.className = 'shield';
+            shield.className = 'shield-icon';
             shield.src = 'Assets/Shield.png';
             shield.alt = 'Shield';
+            shield.style.width = '28px';
+            shield.style.height = '28px';
+            shield.style.imageRendering = 'pixelated';
+            shield.style.filter = 'drop-shadow(0 0 3px #00aaff)';
+            shield.style.verticalAlign = 'middle';
             container.appendChild(shield);
         }
     },
