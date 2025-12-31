@@ -890,7 +890,7 @@ const Game = {
     spawnObstacles() {
         // Reduce spawn rate on mobile devices
         const isMobile = this.width < 600;
-        const baseRate = isMobile ? 0.012 : 0.02;
+        const baseRate = isMobile ? 0.07 : 0.02;
         const spawnRate = baseRate + this.stats.altitude / (isMobile ? 150000 : 100000);
         
         if (Math.random() < spawnRate) {
@@ -941,8 +941,8 @@ const Game = {
     },
     
     spawnShields() {
-        // Shields are rare - only spawn if player has less than max shields
-        if (this.stats.shields < this.stats.maxShields && Math.random() < 0.0006) {
+        // Shields spawn regardless of current count, but only collectible if below max
+        if (Math.random() < 0.0015) {
             this.shields.push({
                 x: Math.random() * (this.width - 40) + 20,
                 y: -30,
@@ -975,28 +975,28 @@ const Game = {
         // Only spawn before reaching Mars
         if (this.stats.altitude < marsDistance) {
             // Spawn Webb at a random point (20% through to Mars)
-            if (!this.webbSpawned && this.stats.altitude > marsDistance * 0.2 && Math.random() < 0.002) {
+            if (!this.webbSpawned && this.stats.altitude > marsDistance * 0.2 && Math.random() < 0.005) {
                 const fromLeft = Math.random() < 0.5;
                 this.specialObjects.push({
-                    x: fromLeft ? -60 : this.width + 60,
-                    y: this.height * 0.3,
-                    width: 60,
-                    height: 60,
-                    speedX: fromLeft ? 40 : -40, // Move inward
+                    x: fromLeft ? -100 : this.width + 100,
+                    y: this.height * 0.25 + Math.random() * this.height * 0.3,
+                    width: 100,
+                    height: 100,
+                    speedX: fromLeft ? 30 : -30, // Slow drift
                     type: 'Webb'
                 });
                 this.webbSpawned = true;
             }
             
             // Spawn Starman at a different random point
-            if (!this.starmanSpawned && this.stats.altitude > marsDistance * 0.4 && Math.random() < 0.002) {
+            if (!this.starmanSpawned && this.stats.altitude > marsDistance * 0.4 && Math.random() < 0.005) {
                 const fromLeft = Math.random() < 0.5;
                 this.specialObjects.push({
-                    x: fromLeft ? -60 : this.width + 60,
-                    y: this.height * 0.4,
-                    width: 50,
-                    height: 70,
-                    speedX: fromLeft ? 35 : -35, // Move inward
+                    x: fromLeft ? -100 : this.width + 100,
+                    y: this.height * 0.2 + Math.random() * this.height * 0.4,
+                    width: 80,
+                    height: 100,
+                    speedX: fromLeft ? 25 : -25, // Slow drift
                     type: 'Starman'
                 });
                 this.starmanSpawned = true;
@@ -2042,13 +2042,24 @@ const Game = {
             ctx.save();
             ctx.translate(obj.x, obj.y);
             
-            // Golden glow for special objects
-            ctx.shadowColor = '#ffd700';
-            ctx.shadowBlur = 30;
+            // Faded like galaxies - no glow
+            ctx.globalAlpha = 0.4;
             
             const asset = this.assets[obj.type];
             if (asset && asset.complete) {
-                ctx.drawImage(asset, -obj.width/2, -obj.height/2, obj.width, obj.height);
+                // Maintain aspect ratio
+                const aspectRatio = asset.naturalWidth / asset.naturalHeight;
+                let drawWidth, drawHeight;
+                if (aspectRatio > 1) {
+                    // Wider than tall
+                    drawWidth = obj.width;
+                    drawHeight = obj.width / aspectRatio;
+                } else {
+                    // Taller than wide
+                    drawHeight = obj.height;
+                    drawWidth = obj.height * aspectRatio;
+                }
+                ctx.drawImage(asset, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
             }
             
             ctx.restore();
