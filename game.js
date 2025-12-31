@@ -121,8 +121,9 @@ const MILESTONES = [
     { name: 'VOYAGER 1', distance: 24000000000, emoji: '🛸', bonus: 1000000 }
 ];
 
-// Convert real distances to game distances (scaled down significantly for playability)
-const DISTANCE_SCALE = 100000; // 1 game unit = 100,000 km
+// Convert real distances to game distances (scaled for playability)
+// Moon should be reachable after ~30-40 seconds of gameplay
+const DISTANCE_SCALE = 10000; // 1 game unit = 10,000 km
 const SCALED_MILESTONES = MILESTONES.map(m => ({
     ...m,
     gameDistance: m.distance / DISTANCE_SCALE
@@ -150,6 +151,8 @@ const Game = {
     booster: {
         x: 0,
         y: 0,
+        width: 50,
+        height: 80,
         rotation: 0,
         separated: false,
         visible: true,
@@ -297,6 +300,16 @@ const Game = {
             this.handleTap(e.clientX, e.clientY);
         });
         
+        // Start screen click/touch handlers
+        const startScreen = document.getElementById('start-screen');
+        startScreen.addEventListener('click', () => {
+            this.handleTap(0, 0);
+        });
+        startScreen.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.handleTap(0, 0);
+        }, { passive: false });
+        
         // Touch
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
@@ -353,13 +366,14 @@ const Game = {
         this.coins = [];
         this.gameSpeed = 1;
         
-        // Position for launch
+        // Position for launch - stack starship on top of booster
         this.player.x = this.width / 2;
-        this.player.y = this.height - 200;
+        this.player.y = this.height - 250;
         this.player.targetX = this.player.x;
         
+        // Position booster directly below starship (touching)
         this.booster.x = this.player.x;
-        this.booster.y = this.player.y + 60;
+        this.booster.y = this.player.y + this.player.height / 2 + this.booster.height / 2;
         this.booster.separated = false;
         this.booster.rotation = 0;
         this.booster.visible = true;
@@ -384,23 +398,136 @@ const Game = {
     },
     
     async shareScore() {
-        const shareData = {
-            title: 'To Mars And Beyond',
-            text: `🚀 I reached ${this.formatDistance(this.stats.altitude)} and scored ${this.stats.score.toLocaleString()} points in To Mars And Beyond! Can you beat my score?`,
-            url: window.location.href
-        };
-        
         try {
-            if (navigator.share) {
+            // Capture the game over screen as an image
+            const gameOverScreen = document.getElementById('gameover-screen');
+            const canvas = await this.captureScreenshot(gameOverScreen);
+            
+            // Convert canvas to blob
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const file = new File([blob], 'my-score.png', { type: 'image/png' });
+            
+            const shareData = {
+                title: 'To Mars And Beyond',
+                text: `🚀 I reached ${this.formatDistance(this.stats.altitude)} and scored ${this.stats.score.toLocaleString()} points in To Mars And Beyond! Can you beat my score?`,
+                url: window.location.href
+            };
+            
+            // Try to share with image if supported
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    ...shareData,
+                    files: [file]
+                });
+            } else if (navigator.share) {
+                // Fallback to text-only share
                 await navigator.share(shareData);
             } else {
-                // Fallback: copy to clipboard
-                await navigator.clipboard.writeText(shareData.text + ' ' + shareData.url);
-                alert('Score copied to clipboard!');
+                // Final fallback: download the image
+                const link = document.createElement('a');
+                link.download = 'my-score.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                alert('Screenshot saved! You can share it with your friends.');
             }
         } catch (err) {
             console.log('Share failed:', err);
+            // If sharing fails, try to at least copy text
+            try {
+                const text = `🚀 I reached ${this.formatDistance(this.stats.altitude)} and scored ${this.stats.score.toLocaleString()} points in To Mars And Beyond!`;
+                await navigator.clipboard.writeText(text + ' ' + window.location.href);
+                alert('Score copied to clipboard!');
+            } catch (e) {
+                console.log('Clipboard failed:', e);
+            }
         }
+    },
+    
+    async captureScreenshot(element) {
+        // Create a canvas to capture the screenshot
+        const rect = element.getBoundingClientRect();
+        const canvas = document.createElement('canvas');
+        const scale = 2; // Higher resolution
+        canvas.width = rect.width * scale;
+        canvas.height = rect.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        
+        // Draw background
+        const gradient = ctx.createLinearGradient(0, 0, 0, rect.height);
+        gradient.addColorStop(0, '#0a0a1a');
+        gradient.addColorStop(0.5, '#1a0a2a');
+        gradient.addColorStop(1, '#2a0a3a');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, rect.width, rect.height);
+        
+        // Draw stars
+        for (let i = 0; i < 100; i++) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
+            ctx.beginPath();
+            ctx.arc(Math.random() * rect.width, Math.random() * rect.height, Math.random() * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Set text properties
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const centerX = rect.width / 2;
+        
+        // Game Over title
+        ctx.font = 'bold 36px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ff0040';
+        ctx.shadowColor = '#800020';
+        ctx.shadowOffsetX = 4;
+        ctx.shadowOffsetY = 4;
+        ctx.fillText('GAME OVER', centerX, 50);
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        // Medal
+        ctx.font = '60px Arial';
+        const medal = document.getElementById('medal').textContent;
+        ctx.fillText(medal, centerX, 120);
+        
+        // Medal text
+        ctx.font = '14px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(document.getElementById('medal-text').textContent, centerX, 170);
+        
+        // Stats box
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.strokeStyle = '#00d4ff';
+        ctx.lineWidth = 3;
+        const boxY = 200;
+        const boxHeight = 100;
+        ctx.fillRect(20, boxY, rect.width - 40, boxHeight);
+        ctx.strokeRect(20, boxY, rect.width - 40, boxHeight);
+        
+        // Stats text
+        ctx.font = '12px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(`ALTITUDE: ${this.formatDistance(this.stats.altitude)}`, centerX, boxY + 30);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`FINAL SCORE: ${this.stats.score.toLocaleString()}`, centerX, boxY + 55);
+        ctx.fillText(`DOGECOINS: ${this.stats.coins}`, centerX, boxY + 80);
+        
+        // Milestones
+        if (this.milestonesReached.length > 0) {
+            ctx.font = '10px "Press Start 2P", monospace';
+            ctx.fillStyle = '#9d4edd';
+            ctx.fillText('MILESTONES REACHED:', centerX, boxY + boxHeight + 30);
+            
+            ctx.font = '24px Arial';
+            const emojis = this.milestonesReached.map(m => m.emoji).join(' ');
+            ctx.fillText(emojis, centerX, boxY + boxHeight + 60);
+        }
+        
+        // Game title at bottom
+        ctx.font = '10px "Press Start 2P", monospace';
+        ctx.fillStyle = '#666';
+        ctx.fillText('TO MARS & BEYOND', centerX, rect.height - 20);
+        
+        return canvas;
     },
     
     generateStars() {
@@ -520,7 +647,7 @@ const Game = {
                 
             case 1: // Liftoff
                 this.player.y -= 100 * this.deltaTime;
-                this.booster.y = this.player.y + 60;
+                this.booster.y = this.player.y + this.player.height / 2 + this.booster.height / 2;
                 this.tower.visible = this.player.y > this.height - 300;
                 
                 if (this.launchTimer > 2) {
@@ -531,7 +658,7 @@ const Game = {
                 
             case 2: // Ascending - move to center
                 this.player.y -= 150 * this.deltaTime;
-                this.booster.y = this.player.y + 60;
+                this.booster.y = this.player.y + this.player.height / 2 + this.booster.height / 2;
                 
                 // Move toward center
                 const targetY = this.height * 0.6;
@@ -1171,13 +1298,13 @@ const Game = {
         }
         
         if (booster && booster.complete) {
-            const w = 50;
-            const h = 80;
+            const w = this.booster.width;
+            const h = this.booster.height;
             ctx.drawImage(booster, -w/2, -h/2, w, h);
         } else {
             // Fallback booster
             ctx.fillStyle = '#888';
-            ctx.fillRect(-20, -40, 40, 80);
+            ctx.fillRect(-this.booster.width/2, -this.booster.height/2, this.booster.width, this.booster.height);
         }
         
         ctx.restore();
@@ -1191,7 +1318,7 @@ const Game = {
         
         if (this.flames.underBooster && !this.booster.separated) {
             flameX = this.booster.x;
-            flameY = this.booster.y + 50;
+            flameY = this.booster.y + this.booster.height / 2;
         } else {
             flameX = this.player.x;
             flameY = this.player.y + this.player.height / 2;
@@ -1230,12 +1357,9 @@ const Game = {
         const ctx = this.ctx;
         const starship = this.assets.Starship;
         
-        // Slight wobble when moving
-        const wobble = (this.player.targetX - this.player.x) * 0.02;
-        
         ctx.save();
         ctx.translate(this.player.x, this.player.y);
-        ctx.rotate(wobble);
+        // No rotation - keep starship upright
         
         if (starship && starship.complete) {
             const w = this.player.width;

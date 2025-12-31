@@ -78,18 +78,6 @@ html, body {
     );
 }
 
-.logo-container {
-    margin-bottom: 20px;
-    animation: float 3s ease-in-out infinite;
-}
-
-#spacex-logo {
-    width: min(200px, 50vw);
-    height: auto;
-    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
-    image-rendering: pixelated;
-}
-
 .game-title {
     font-size: clamp(24px, 8vw, 48px);
     color: var(--star-white);
@@ -134,11 +122,6 @@ html, body {
 
 @keyframes blink {
     50% { opacity: 0.5; }
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
 }
 
 .controls-hint {
@@ -427,15 +410,12 @@ img {
 
 /* Responsive adjustments */
 @media (max-height: 600px) {
-    .logo-container { margin-bottom: 10px; }
-    #spacex-logo { width: min(120px, 30vw); }
     .game-title { margin-bottom: 5px; }
     .controls-hint { display: none; }
     .start-prompt { margin-bottom: 20px; padding: 10px 20px; }
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
-    .logo-container { display: none; }
     .subtitle { margin-bottom: 20px; }
 }
 

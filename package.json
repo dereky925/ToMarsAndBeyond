@@ -1,0 +1,12 @@
+{
+  "name": "to-mars-and-beyond",
+  "version": "1.0.0",
+  "description": "An 8-bit style SpaceX Starship game",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx live-server --port=3000"
+  },
+  "keywords": ["game", "spacex", "starship", "8-bit"],
+  "license": "MIT"
+}
+
