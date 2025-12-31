@@ -122,8 +122,8 @@ const MILESTONES = [
 ];
 
 // Convert real distances to game distances (scaled for playability)
-// Moon should be reachable after ~30-40 seconds of gameplay
-const DISTANCE_SCALE = 10000; // 1 game unit = 10,000 km
+// Moon should be reachable after ~20-30 seconds of gameplay
+const DISTANCE_SCALE = 20000; // 1 game unit = 20,000 km (easier milestones)
 const SCALED_MILESTONES = MILESTONES.map(m => ({
     ...m,
     gameDistance: m.distance / DISTANCE_SCALE
@@ -137,22 +137,22 @@ const Game = {
     height: 0,
     state: 'start', // start, launching, playing, gameover
     
-    // Player
+    // Player (Starship is ~50m tall in reality)
     player: {
         x: 0,
         y: 0,
-        width: 60,
-        height: 120,
+        width: 40,
+        height: 80,
         targetX: 0,
         velocityX: 0
     },
     
-    // Booster (for separation)
+    // Booster (Super Heavy is ~70m tall - larger than Starship!)
     booster: {
         x: 0,
         y: 0,
-        width: 50,
-        height: 80,
+        width: 45,
+        height: 100,
         rotation: 0,
         separated: false,
         visible: true,
@@ -185,11 +185,15 @@ const Game = {
     // Objects
     obstacles: [],
     coins: [],
+    hearts: [], // Collectible hearts for health
     stars: [],
     shootingStars: [],
     galaxies: [],
     blackHoles: [],
     aliens: [],
+    
+    // Milestone visual
+    milestonePlanet: null, // Current approaching planet for background display
     
     // Milestones
     milestonesReached: [],
@@ -364,6 +368,8 @@ const Game = {
         this.currentMilestoneIndex = 0;
         this.obstacles = [];
         this.coins = [];
+        this.hearts = [];
+        this.milestonePlanet = null;
         this.gameSpeed = 1;
         
         // Position for launch - stack starship on top of booster
@@ -729,6 +735,9 @@ const Game = {
         // Spawn coins
         this.spawnCoins();
         
+        // Spawn hearts (health pickups)
+        this.spawnHearts();
+        
         // Spawn space objects
         this.spawnSpaceObjects();
         
@@ -737,6 +746,12 @@ const Game = {
         
         // Update coins
         this.updateCoins();
+        
+        // Update heart pickups
+        this.updateHeartPickups();
+        
+        // Update milestone planet visibility
+        this.updateMilestonePlanet();
         
         // Check milestones
         this.checkMilestones();
@@ -782,6 +797,20 @@ const Game = {
                 height: 30,
                 speed: 80 * this.gameSpeed,
                 rotation: 0
+            });
+        }
+    },
+    
+    spawnHearts() {
+        // Hearts are rare - only spawn if player has lost health
+        if (this.stats.hearts < this.stats.maxHearts && Math.random() < 0.003) {
+            this.hearts.push({
+                x: Math.random() * (this.width - 40) + 20,
+                y: -30,
+                width: 30,
+                height: 30,
+                speed: 60 * this.gameSpeed,
+                pulse: 0
             });
         }
     },
@@ -890,9 +919,60 @@ const Game = {
                 SoundGenerator.play('coin');
                 this.stats.coins++;
                 this.stats.score += 500;
-                this.showCoinCollect(coin.x, coin.y);
+                this.showCoinCollect(coin.x, coin.y, '+500');
                 this.coins.splice(i, 1);
             }
+        }
+    },
+    
+    updateHeartPickups() {
+        for (let i = this.hearts.length - 1; i >= 0; i--) {
+            const heart = this.hearts[i];
+            heart.y += heart.speed * this.deltaTime;
+            heart.pulse += 5 * this.deltaTime;
+            
+            if (heart.y > this.height + 50) {
+                this.hearts.splice(i, 1);
+                continue;
+            }
+            
+            // Collision check
+            if (this.checkCollision(this.player, heart)) {
+                if (this.stats.hearts < this.stats.maxHearts) {
+                    SoundGenerator.play('coin'); // Use coin sound for now
+                    this.stats.hearts++;
+                    this.updateHearts();
+                    this.showCoinCollect(heart.x, heart.y, '+❤️');
+                }
+                this.hearts.splice(i, 1);
+            }
+        }
+    },
+    
+    updateMilestonePlanet() {
+        if (this.currentMilestoneIndex >= SCALED_MILESTONES.length) {
+            this.milestonePlanet = null;
+            return;
+        }
+        
+        const milestone = SCALED_MILESTONES[this.currentMilestoneIndex];
+        const distanceToMilestone = milestone.gameDistance - this.stats.altitude;
+        
+        // Start showing planet when getting close (within 500 game km)
+        if (distanceToMilestone <= 500 && distanceToMilestone > 0) {
+            const progress = 1 - (distanceToMilestone / 500);
+            this.milestonePlanet = {
+                ...milestone,
+                progress: progress,
+                size: 80 + progress * 200, // Grows from 80 to 280
+                y: -100 + progress * (this.height * 0.3), // Moves down into view
+                opacity: Math.min(progress * 1.5, 1)
+            };
+        } else if (distanceToMilestone <= 0) {
+            // Just passed milestone, fade out
+            this.milestonePlanet = null;
+        } else {
+            this.milestonePlanet = null;
         }
     },
     
@@ -979,21 +1059,32 @@ const Game = {
     
     showMilestone(milestone) {
         const flash = document.getElementById('milestone-flash');
-        flash.innerHTML = `${milestone.emoji}<br>${milestone.name} REACHED!<br>+${milestone.bonus.toLocaleString()}`;
+        flash.innerHTML = `
+            <div class="milestone-icon">${milestone.emoji}</div>
+            <div class="milestone-name">${milestone.name}</div>
+            <div class="milestone-reached">REACHED!</div>
+            <div class="milestone-bonus">+${milestone.bonus.toLocaleString()} POINTS</div>
+        `;
         flash.classList.remove('hidden');
         flash.style.animation = 'none';
         flash.offsetHeight; // Trigger reflow
-        flash.style.animation = 'milestoneFlash 2s forwards';
+        flash.style.animation = 'milestoneFlash 3s forwards';
+        
+        // Add screen flash effect
+        const screenFlash = document.createElement('div');
+        screenFlash.className = 'milestone-screen-flash';
+        document.getElementById('game-container').appendChild(screenFlash);
+        setTimeout(() => screenFlash.remove(), 500);
         
         setTimeout(() => {
             flash.classList.add('hidden');
-        }, 2000);
+        }, 3000);
     },
     
-    showCoinCollect(x, y) {
+    showCoinCollect(x, y, text = '+500') {
         const flash = document.createElement('div');
         flash.className = 'coin-flash';
-        flash.textContent = '+500';
+        flash.textContent = text;
         flash.style.left = x + 'px';
         flash.style.top = y + 'px';
         document.getElementById('game-container').appendChild(flash);
@@ -1098,6 +1189,9 @@ const Game = {
         // Galaxies (background)
         this.renderGalaxies();
         
+        // Milestone planet (large, in background when approaching)
+        this.renderMilestonePlanetBackground();
+        
         // Black holes
         this.renderBlackHoles();
         
@@ -1133,8 +1227,8 @@ const Game = {
         // Coins
         this.renderCoins();
         
-        // Milestone planets (decorative, in background when approaching)
-        this.renderMilestonePlanets();
+        // Heart pickups
+        this.renderHeartPickups();
     },
     
     renderStars() {
@@ -1441,35 +1535,86 @@ const Game = {
         });
     },
     
-    renderMilestonePlanets() {
-        // Show upcoming milestone planet in background
-        if (this.currentMilestoneIndex >= SCALED_MILESTONES.length) return;
+    renderHeartPickups() {
+        const ctx = this.ctx;
         
-        const milestone = SCALED_MILESTONES[this.currentMilestoneIndex];
-        const distanceToMilestone = milestone.gameDistance - this.stats.altitude;
-        
-        // Only show when getting close
-        if (distanceToMilestone > 1000 || distanceToMilestone < 0) return;
-        
-        const progress = 1 - (distanceToMilestone / 1000);
-        const planetAsset = this.assets[milestone.name.replace(' ', '')];
+        this.hearts.forEach(heart => {
+            ctx.save();
+            ctx.translate(heart.x, heart.y);
+            
+            // Pulsing effect
+            const scale = 1 + Math.sin(heart.pulse) * 0.2;
+            ctx.scale(scale, scale);
+            
+            // Draw heart
+            ctx.font = '28px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('❤️', 0, 0);
+            
+            // Glow effect
+            ctx.shadowColor = '#ff0040';
+            ctx.shadowBlur = 15;
+            ctx.fillText('❤️', 0, 0);
+            
+            ctx.restore();
+        });
+    },
+    
+    renderMilestonePlanetBackground() {
+        // Show the approaching milestone planet prominently in background
+        if (!this.milestonePlanet) return;
         
         const ctx = this.ctx;
-        const size = 50 + progress * 100;
-        const y = this.height * 0.2 - progress * 50;
-        const alpha = Math.min(progress * 2, 0.8);
+        const planet = this.milestonePlanet;
+        
+        // Get the asset name (remove spaces, handle "Voyager 1" -> "Voyager1")
+        const assetName = planet.name.replace(' ', '');
+        const planetAsset = this.assets[assetName];
         
         ctx.save();
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = planet.opacity;
+        
+        // Center the planet horizontally
+        const x = this.width / 2;
+        const y = planet.y;
+        const size = planet.size;
+        
+        // Draw glow behind planet
+        const glowGradient = ctx.createRadialGradient(x, y, size * 0.3, x, y, size * 0.8);
+        glowGradient.addColorStop(0, 'rgba(255, 200, 100, 0.3)');
+        glowGradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = glowGradient;
+        ctx.beginPath();
+        ctx.arc(x, y, size * 0.8, 0, Math.PI * 2);
+        ctx.fill();
         
         if (planetAsset && planetAsset.complete) {
-            ctx.drawImage(planetAsset, this.width / 2 - size/2, y - size/2, size, size);
+            ctx.drawImage(planetAsset, x - size/2, y - size/2, size, size);
         } else {
-            // Fallback planet
-            ctx.fillStyle = '#666';
+            // Fallback - draw a colored circle based on planet name
+            const colors = {
+                'MOON': '#888888',
+                'MARS': '#c1440e',
+                'JUPITER': '#d8ca9d',
+                'SATURN': '#f4d59e',
+                'URANUS': '#b1e4e3',
+                'NEPTUNE': '#5b5ddf',
+                'PLUTO': '#968570',
+                'VOYAGER 1': '#aaaaaa'
+            };
+            ctx.fillStyle = colors[planet.name] || '#666';
             ctx.beginPath();
-            ctx.arc(this.width / 2, y, size/2, 0, Math.PI * 2);
+            ctx.arc(x, y, size/2, 0, Math.PI * 2);
             ctx.fill();
+        }
+        
+        // Draw planet name approaching text
+        if (planet.progress < 0.8) {
+            ctx.font = '12px "Press Start 2P", monospace';
+            ctx.fillStyle = `rgba(255, 215, 0, ${planet.opacity})`;
+            ctx.textAlign = 'center';
+            ctx.fillText(`APPROACHING ${planet.name}`, x, y + size/2 + 30);
         }
         
         ctx.restore();
