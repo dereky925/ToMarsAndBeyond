@@ -186,6 +186,9 @@ const Game = {
         offsetY: 0  // How far the tower has scrolled down
     },
     
+    // Palm trees (scroll down during launch like tower)
+    palmTrees: [],
+    
     // Game stats
     stats: {
         altitude: 0,
@@ -277,7 +280,7 @@ const Game = {
     
     loadAssets() {
         const assetList = [
-            'Starship', 'Booster', 'Tower', 'Flames', 'SpaceX',
+            'Starship', 'Booster', 'Tower', 'Flames', 'SpaceX', 'Palmtree',
             'Asteroid1', 'Asteroid2', 'Asteroid3',
             'Dogecoin', 'UFO', 'Heart',
             'Galaxy1', 'Galaxy2', 'Galaxy3', 'Blackhole',
@@ -407,6 +410,14 @@ const Game = {
         this.tower.initialY = this.height;
         this.flames.visible = false;
         this.flames.underBooster = true;
+        
+        // Initialize palm trees at various positions
+        this.palmTrees = [
+            { x: this.width * 0.08, height: 90, scale: 1, offsetY: 0 },
+            { x: this.width * 0.18, height: 120, scale: -1, offsetY: 0 }, // Flipped
+            { x: this.width * 0.82, height: 100, scale: 1, offsetY: 0 },
+            { x: this.width * 0.92, height: 75, scale: -1, offsetY: 0 }  // Flipped
+        ];
         
         SoundGenerator.play('launch');
     },
@@ -673,8 +684,9 @@ const Game = {
             case 1: // Liftoff
                 this.player.y -= 100 * this.deltaTime;
                 this.booster.y = this.player.y + this.player.height / 2 + this.booster.height / 2;
-                // Scroll tower down as rocket rises
+                // Scroll tower and palm trees down as rocket rises
                 this.tower.offsetY += 100 * this.deltaTime;
+                this.palmTrees.forEach(palm => palm.offsetY += 100 * this.deltaTime);
                 // Tower is visible until it scrolls off the bottom of the screen
                 this.tower.visible = (this.tower.initialY + this.tower.offsetY) < this.height + 250;
                 
@@ -686,8 +698,9 @@ const Game = {
                 
             case 2: // Ascending - move to center
                 this.player.y -= 150 * this.deltaTime;
-                // Continue scrolling tower down
+                // Continue scrolling tower and palm trees down
                 this.tower.offsetY += 150 * this.deltaTime;
+                this.palmTrees.forEach(palm => palm.offsetY += 150 * this.deltaTime);
                 this.tower.visible = (this.tower.initialY + this.tower.offsetY) < this.height + 250;
                 this.booster.y = this.player.y + this.player.height / 2 + this.booster.height / 2;
                 
@@ -1287,6 +1300,11 @@ const Game = {
         // Aliens
         this.renderAliens();
         
+        // Palm trees (during launch)
+        if (this.state === 'launching') {
+            this.renderPalmTrees();
+        }
+        
         // Tower (during launch)
         if (this.tower.visible && this.state === 'launching') {
             this.renderTower();
@@ -1423,6 +1441,38 @@ const Game = {
             if (ufoAsset && ufoAsset.complete) {
                 ctx.drawImage(ufoAsset, -alien.width/2, -alien.height/2, alien.width, alien.height);
             }
+            
+            ctx.restore();
+        });
+    },
+    
+    renderPalmTrees() {
+        const ctx = this.ctx;
+        const palmAsset = this.assets.Palmtree;
+        
+        if (!palmAsset || !palmAsset.complete) return;
+        
+        this.palmTrees.forEach(palm => {
+            // Only render if still on screen
+            const palmY = this.height + palm.offsetY;
+            if (palmY > this.height + palm.height + 50) return;
+            
+            ctx.save();
+            ctx.translate(palm.x, palmY);
+            
+            // Flip horizontally if scale is -1
+            if (palm.scale < 0) {
+                ctx.scale(-1, 1);
+            }
+            
+            // Calculate width based on height (maintain aspect ratio)
+            const aspectRatio = palmAsset.width / palmAsset.height;
+            const w = palm.height * aspectRatio;
+            
+            // Draw as silhouette (black)
+            ctx.filter = 'brightness(0)';
+            ctx.globalAlpha = 0.9;
+            ctx.drawImage(palmAsset, -w/2, -palm.height, w, palm.height);
             
             ctx.restore();
         });

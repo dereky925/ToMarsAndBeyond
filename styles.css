@@ -130,26 +130,19 @@ html, body {
     z-index: 1;
 }
 
-/* Palm tree silhouettes */
+/* Palm tree silhouettes using Palmtree.png */
 .palm-tree {
     position: absolute;
     bottom: 0;
-    width: 60px;
-    height: 100px;
-    background: #000;
-    clip-path: polygon(
-        50% 0%, 
-        15% 25%, 0% 20%, 20% 35%, 5% 40%, 25% 45%,
-        30% 50%, 35% 100%, 65% 100%, 70% 50%,
-        75% 45%, 95% 40%, 80% 35%, 100% 20%, 85% 25%
-    );
-    opacity: 0.9;
+    height: auto;
+    filter: brightness(0) opacity(0.9);
+    image-rendering: pixelated;
 }
 
-.palm-1 { left: 5%; height: 80px; width: 50px; }
-.palm-2 { left: 15%; height: 110px; width: 65px; }
-.palm-3 { right: 10%; height: 90px; width: 55px; }
-.palm-4 { right: 20%; height: 70px; width: 45px; }
+.palm-1 { left: 3%; height: 90px; }
+.palm-2 { left: 12%; height: 120px; transform: scaleX(-1); }
+.palm-3 { right: 8%; height: 100px; }
+.palm-4 { right: 18%; height: 75px; transform: scaleX(-1); }
 
 /* Rocket and tower silhouette */
 .rocket-silhouette {
