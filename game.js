@@ -891,9 +891,9 @@ const Game = {
     
     spawnObstacles() {
         // Reduce spawn rate on mobile devices
-        const isMobile = this.width < 600;
-        const baseRate = isMobile ? 0.002 : 0.02;
-        const spawnRate = baseRate + this.stats.altitude / (isMobile ? 500000 : 100000);
+        const isMobile = this.width < 1000;
+        const baseRate = isMobile ? 0.007 : 0.02;
+        const spawnRate = baseRate + this.stats.altitude / (isMobile ? 200000 : 100000);
         
         if (Math.random() < spawnRate) {
             const isUFO = Math.random() < 0.1; // 10% chance for UFO
