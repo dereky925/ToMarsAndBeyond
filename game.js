@@ -109,20 +109,20 @@ const SoundGenerator = {
     }
 };
 
-// Game Constants - Milestones with fixed game distances for balanced gameplay
-// All milestones should be reachable within 4 minutes (~240 seconds)
-// At ~50-80 km/s average, that's about 15,000-20,000 total game km
+// Game Constants - Milestones designed for ~4 minute total gameplay
+// At ~50-100 km/s average speed, all milestones reachable within 4 minutes
 const MILESTONES = [
-    { name: 'MOON', gameDistance: 1500, emoji: '🌙', bonus: 10000 },      // ~25 sec
-    { name: 'MARS', gameDistance: 3500, emoji: '🔴', bonus: 25000 },      // ~55 sec
-    { name: 'JUPITER', gameDistance: 6000, emoji: '🟠', bonus: 50000 },   // ~90 sec
-    { name: 'SATURN', gameDistance: 9000, emoji: '🪐', bonus: 75000 },    // ~130 sec
-    { name: 'URANUS', gameDistance: 12000, emoji: '🔵', bonus: 100000 },  // ~170 sec
-    { name: 'NEPTUNE', gameDistance: 15000, emoji: '💙', bonus: 125000 }, // ~200 sec
-    { name: 'PLUTO', gameDistance: 18000, emoji: '⚪', bonus: 150000 },   // ~230 sec
-    { name: 'VOYAGER 1', gameDistance: 22000, emoji: '🛸', bonus: 500000 } // ~270 sec
+    { name: 'MOON', distance: 384400, emoji: '🌙', bonus: 10000, gameDistance: 1500 },      // ~25 sec
+    { name: 'MARS', distance: 225000000, emoji: '🔴', bonus: 50000, gameDistance: 3500 },   // ~50 sec
+    { name: 'JUPITER', distance: 628730000, emoji: '🟠', bonus: 100000, gameDistance: 6000 }, // ~80 sec
+    { name: 'SATURN', distance: 1275000000, emoji: '🪐', bonus: 150000, gameDistance: 8500 }, // ~110 sec
+    { name: 'URANUS', distance: 2724000000, emoji: '🔵', bonus: 200000, gameDistance: 11000 }, // ~140 sec
+    { name: 'NEPTUNE', distance: 4351000000, emoji: '💙', bonus: 250000, gameDistance: 13500 }, // ~170 sec
+    { name: 'PLUTO', distance: 5900000000, emoji: '⚪', bonus: 300000, gameDistance: 16000 }, // ~200 sec
+    { name: 'VOYAGER 1', distance: 24000000000, emoji: '🛸', bonus: 1000000, gameDistance: 20000 } // ~240 sec (4 min)
 ];
 
+// Use the predefined game distances
 const SCALED_MILESTONES = MILESTONES;
 
 // Game State
@@ -179,13 +179,14 @@ const Game = {
     },
     
     // Objects
-    obstacles: [], // Asteroids and UFOs
+    obstacles: [],
     coins: [],
     hearts: [], // Collectible hearts for health
     stars: [],
     shootingStars: [],
-    galaxies: [], // Using Galaxy1-3.png
-    blackHoles: [], // Using Blackhole.png
+    galaxies: [],
+    blackHoles: [],
+    aliens: [],
     
     // Milestone visual
     milestonePlanet: null, // Current approaching planet for background display
@@ -359,7 +360,7 @@ const Game = {
             maxHearts: 3
         };
         
-        this.updateHeartsUI();
+        this.updateHearts();
         this.milestonesReached = [];
         this.currentMilestoneIndex = 0;
         this.obstacles = [];
@@ -368,19 +369,17 @@ const Game = {
         this.milestonePlanet = null;
         this.gameSpeed = 1;
         
-        // Position for launch - stack starship on top of booster, resting on ground
-        // Calculate total stack height and position so bottom of booster is near ground
-        const totalStackHeight = this.player.height + this.booster.height;
-        const groundLevel = this.height - 80; // Leave some space for tower base
-        
-        // Booster bottom should be at ground level
-        this.booster.y = groundLevel - this.booster.height / 2;
-        this.booster.x = this.width / 2;
-        
-        // Starship sits on top of booster
+        // Position for launch - stack starship on top of booster, resting near ground
         this.player.x = this.width / 2;
-        this.player.y = this.booster.y - this.booster.height / 2 - this.player.height / 2;
+        // Calculate so bottom of booster is near ground (leaving room for flames)
+        // Booster bottom = player.y + player.height/2 + booster.height
+        // We want booster bottom at about height - 80 (for flames)
+        this.player.y = this.height - 80 - this.booster.height - this.player.height / 2;
         this.player.targetX = this.player.x;
+        
+        // Position booster directly below starship (touching)
+        this.booster.x = this.player.x;
+        this.booster.y = this.player.y + this.player.height / 2 + this.booster.height / 2;
         this.booster.separated = false;
         this.booster.rotation = 0;
         this.booster.visible = true;
@@ -622,6 +621,9 @@ const Game = {
         // Update shooting stars
         this.updateShootingStars();
         
+        // Update aliens
+        this.updateAliens();
+        
         // Update galaxies
         this.updateGalaxies();
         
@@ -770,36 +772,17 @@ const Game = {
             const isUFO = Math.random() < 0.1; // 10% chance for UFO
             const asteroidType = Math.floor(Math.random() * 3) + 1;
             
-            if (isUFO) {
-                // UFOs fly across the screen horizontally like the old aliens did
-                const fromLeft = Math.random() < 0.5;
-                this.obstacles.push({
-                    x: fromLeft ? -50 : this.width + 50,
-                    y: Math.random() * (this.height * 0.5) + 50,
-                    width: 50,
-                    height: 35,
-                    speedX: (fromLeft ? 1 : -1) * (80 + Math.random() * 60) * this.gameSpeed,
-                    speedY: 30 * this.gameSpeed, // Slight downward movement
-                    type: 'ufo',
-                    rotation: 0,
-                    rotationSpeed: 0,
-                    wobble: Math.random() * Math.PI * 2,
-                    wobbleSpeed: 3 + Math.random() * 2
-                });
-            } else {
-                // Asteroids fall from top
-                this.obstacles.push({
-                    x: Math.random() * (this.width - 60) + 30,
-                    y: -60,
-                    width: 40 + Math.random() * 20,
-                    height: 40 + Math.random() * 20,
-                    speed: (100 + Math.random() * 100) * this.gameSpeed,
-                    type: `asteroid${asteroidType}`,
-                    rotation: 0,
-                    rotationSpeed: (Math.random() - 0.5) * 4,
-                    wobble: 0
-                });
-            }
+            this.obstacles.push({
+                x: Math.random() * (this.width - 60) + 30,
+                y: -60,
+                width: isUFO ? 50 : 40 + Math.random() * 20,
+                height: isUFO ? 30 : 40 + Math.random() * 20,
+                speed: (100 + Math.random() * 100) * this.gameSpeed,
+                type: isUFO ? 'ufo' : `asteroid${asteroidType}`,
+                rotation: 0,
+                rotationSpeed: (Math.random() - 0.5) * 4,
+                wobble: isUFO ? Math.random() * Math.PI * 2 : 0
+            });
         }
     },
     
@@ -845,8 +828,8 @@ const Game = {
             });
         }
         
-        // Galaxies (using Galaxy1-3.png, faint in background)
-        if (Math.random() < 0.0008 && this.sunsetProgress > 0.4 && this.galaxies.length < 4) {
+        // Galaxies using Galaxy1-3.png (faint background decoration)
+        if (Math.random() < 0.0008 && this.sunsetProgress > 0.4 && this.galaxies.length < 2) {
             const galaxyType = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
             this.galaxies.push({
                 x: Math.random() * this.width,
@@ -855,20 +838,33 @@ const Game = {
                 rotation: Math.random() * Math.PI * 2,
                 rotationSpeed: (Math.random() - 0.5) * 0.2,
                 type: galaxyType,
-                speed: 10 + Math.random() * 15,
-                opacity: 0.2 + Math.random() * 0.3 // Faint
+                speed: 15,
+                opacity: 0.3 + Math.random() * 0.2 // Faint: 0.3-0.5 opacity
             });
         }
         
-        // Black holes (using Blackhole.png, rare hazard)
-        if (Math.random() < 0.0004 && this.sunsetProgress > 0.6 && this.blackHoles.length < 1) {
+        // Black holes using Blackhole.png (rare hazard)
+        if (Math.random() < 0.0003 && this.sunsetProgress > 0.6 && this.blackHoles.length < 1) {
             this.blackHoles.push({
-                x: Math.random() * (this.width - 100) + 50,
-                y: -80,
-                size: 70 + Math.random() * 30,
+                x: Math.random() * this.width,
+                y: -100,
+                size: 80,
                 speed: 25,
                 pullRadius: 180,
                 rotation: 0
+            });
+        }
+        
+        // Flying UFOs using UFO.png (decorative, flying across screen)
+        if (Math.random() < 0.002 && this.sunsetProgress > 0.3 && this.aliens.length < 3) {
+            this.aliens.push({
+                x: Math.random() < 0.5 ? -50 : this.width + 50,
+                y: Math.random() * this.height * 0.4 + 50,
+                width: 50,
+                height: 30,
+                speedX: (Math.random() < 0.5 ? 1 : -1) * (40 + Math.random() * 60),
+                wobbleOffset: Math.random() * Math.PI * 2,
+                wobbleSpeed: 3 + Math.random() * 2
             });
         }
     },
@@ -876,32 +872,19 @@ const Game = {
     updateObstacles() {
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
             const obs = this.obstacles[i];
+            obs.y += obs.speed * this.deltaTime;
+            obs.rotation += obs.rotationSpeed * this.deltaTime;
             
+            // UFO wobble
             if (obs.type === 'ufo') {
-                // UFOs fly across the screen with wobble
-                obs.x += obs.speedX * this.deltaTime;
-                obs.y += obs.speedY * this.deltaTime;
-                obs.wobble += obs.wobbleSpeed * this.deltaTime;
-                // Vertical wobble while flying
-                obs.y += Math.sin(obs.wobble) * 1.5;
-                
-                // Remove if off screen (left or right)
-                if ((obs.speedX > 0 && obs.x > this.width + 100) ||
-                    (obs.speedX < 0 && obs.x < -100) ||
-                    obs.y > this.height + 100) {
-                    this.obstacles.splice(i, 1);
-                    continue;
-                }
-            } else {
-                // Asteroids fall down and rotate
-                obs.y += obs.speed * this.deltaTime;
-                obs.rotation += obs.rotationSpeed * this.deltaTime;
-                
-                // Remove if off screen
-                if (obs.y > this.height + 100) {
-                    this.obstacles.splice(i, 1);
-                    continue;
-                }
+                obs.wobble += 5 * this.deltaTime;
+                obs.x += Math.sin(obs.wobble) * 2;
+            }
+            
+            // Remove if off screen
+            if (obs.y > this.height + 100) {
+                this.obstacles.splice(i, 1);
+                continue;
             }
             
             // Collision check
@@ -915,7 +898,7 @@ const Game = {
                 }
                 
                 this.showDamageFlash();
-                this.updateHeartsUI();
+                this.updateHearts();
                 this.obstacles.splice(i, 1);
                 
                 if (this.stats.hearts <= 0) {
@@ -963,7 +946,7 @@ const Game = {
                 if (this.stats.hearts < this.stats.maxHearts) {
                     SoundGenerator.play('coin'); // Use coin sound for now
                     this.stats.hearts++;
-                    this.updateHeartsUI();
+                    this.updateHearts();
                     this.showCoinCollect(heart.x, heart.y, '+❤️');
                 }
                 this.hearts.splice(i, 1);
@@ -1023,12 +1006,10 @@ const Game = {
         }
     },
     
-    
     updateBlackHoles() {
         for (let i = this.blackHoles.length - 1; i >= 0; i--) {
             const bh = this.blackHoles[i];
             bh.y += bh.speed * this.deltaTime;
-            bh.rotation += 0.5 * this.deltaTime; // Slow rotation
             
             if (bh.y > this.height + bh.size) {
                 this.blackHoles.splice(i, 1);
@@ -1043,6 +1024,19 @@ const Game = {
             if (dist < bh.pullRadius && dist > 0) {
                 const pullStrength = (1 - dist / bh.pullRadius) * 200 * this.deltaTime;
                 this.player.targetX += (dx / dist) * pullStrength;
+            }
+        }
+    },
+    
+    updateAliens() {
+        for (let i = this.aliens.length - 1; i >= 0; i--) {
+            const alien = this.aliens[i];
+            alien.x += alien.speedX * this.deltaTime;
+            alien.wobbleOffset += (alien.wobbleSpeed || 3) * this.deltaTime;
+            
+            if ((alien.speedX > 0 && alien.x > this.width + 80) ||
+                (alien.speedX < 0 && alien.x < -80)) {
+                this.aliens.splice(i, 1);
             }
         }
     },
@@ -1115,29 +1109,14 @@ const Game = {
         document.getElementById('score').textContent = `SCORE: ${this.stats.score.toLocaleString()}`;
     },
     
-    updateHeartsUI() {
+    updateHearts() {
         const container = document.getElementById('hearts');
         container.innerHTML = '';
-        const heartAsset = this.assets.Heart;
-        
         for (let i = 0; i < this.stats.maxHearts; i++) {
-            const heartEl = document.createElement('span');
-            heartEl.className = 'heart';
-            
-            if (heartAsset && heartAsset.complete) {
-                const img = document.createElement('img');
-                img.src = 'Assets/Heart.png';
-                img.style.width = '28px';
-                img.style.height = '28px';
-                img.style.imageRendering = 'pixelated';
-                if (i >= this.stats.hearts) {
-                    img.style.filter = 'grayscale(100%) brightness(0.4)';
-                }
-                heartEl.appendChild(img);
-            } else {
-                heartEl.textContent = i < this.stats.hearts ? '❤️' : '🖤';
-            }
-            container.appendChild(heartEl);
+            const heart = document.createElement('span');
+            heart.className = 'heart';
+            heart.textContent = i < this.stats.hearts ? '❤️' : '🖤';
+            container.appendChild(heart);
         }
     },
     
@@ -1224,6 +1203,9 @@ const Game = {
         // Shooting stars
         this.renderShootingStars();
         
+        // Aliens
+        this.renderAliens();
+        
         // Tower (during launch)
         if (this.tower.visible && this.state === 'launching') {
             this.renderTower();
@@ -1303,21 +1285,12 @@ const Game = {
             const galaxyAsset = this.assets[`Galaxy${galaxy.type}`];
             
             ctx.save();
-            ctx.globalAlpha = galaxy.opacity; // Faint in background
+            ctx.globalAlpha = galaxy.opacity; // Faint background
             ctx.translate(galaxy.x, galaxy.y);
             ctx.rotate(galaxy.rotation);
             
             if (galaxyAsset && galaxyAsset.complete) {
                 ctx.drawImage(galaxyAsset, -galaxy.size/2, -galaxy.size/2, galaxy.size, galaxy.size);
-            } else {
-                // Fallback - faint ellipse
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, galaxy.size/2);
-                gradient.addColorStop(0, 'rgba(150, 100, 200, 0.5)');
-                gradient.addColorStop(1, 'transparent');
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.ellipse(0, 0, galaxy.size/2, galaxy.size/4, 0, 0, Math.PI * 2);
-                ctx.fill();
             }
             
             ctx.restore();
@@ -1331,32 +1304,44 @@ const Game = {
         this.blackHoles.forEach(bh => {
             ctx.save();
             ctx.translate(bh.x, bh.y);
+            
+            // Slow rotation for the black hole
+            bh.rotation = (bh.rotation || 0) + 0.01;
             ctx.rotate(bh.rotation);
             
             if (blackholeAsset && blackholeAsset.complete) {
                 ctx.drawImage(blackholeAsset, -bh.size/2, -bh.size/2, bh.size, bh.size);
             } else {
-                // Fallback - dark circle with glow
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, bh.size/2);
-                gradient.addColorStop(0, '#000');
-                gradient.addColorStop(0.5, '#1a0030');
-                gradient.addColorStop(0.8, '#4a0080');
-                gradient.addColorStop(1, 'transparent');
-                
-                ctx.fillStyle = gradient;
+                // Fallback
+                ctx.fillStyle = '#000';
                 ctx.beginPath();
                 ctx.arc(0, 0, bh.size/2, 0, Math.PI * 2);
                 ctx.fill();
             }
             
-            // Draw pull radius indicator (faint)
-            ctx.strokeStyle = 'rgba(128, 0, 128, 0.2)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 10]);
-            ctx.beginPath();
-            ctx.arc(0, 0, bh.pullRadius, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            ctx.restore();
+        });
+    },
+    
+    renderAliens() {
+        const ctx = this.ctx;
+        const ufoAsset = this.assets.UFO;
+        
+        this.aliens.forEach(alien => {
+            // Wobble effect for flying UFOs
+            const wobbleY = Math.sin(alien.wobbleOffset) * 15;
+            
+            ctx.save();
+            ctx.translate(alien.x, alien.y + wobbleY);
+            
+            // Flip UFO if moving left
+            if (alien.speedX < 0) {
+                ctx.scale(-1, 1);
+            }
+            
+            if (ufoAsset && ufoAsset.complete) {
+                ctx.drawImage(ufoAsset, -alien.width/2, -alien.height/2, alien.width, alien.height);
+            }
             
             ctx.restore();
         });
@@ -1547,12 +1532,12 @@ const Game = {
             
             // Glow effect
             ctx.shadowColor = '#ff0040';
-            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 20;
             
             if (heartAsset && heartAsset.complete) {
                 ctx.drawImage(heartAsset, -heart.width/2, -heart.height/2, heart.width, heart.height);
             } else {
-                // Fallback emoji
+                // Fallback to emoji
                 ctx.font = '28px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
