@@ -133,7 +133,7 @@ html, body {
 /* Palm tree silhouettes using Palmtree.png */
 .palm-tree {
     position: absolute;
-    bottom: 0;
+    bottom: -5px; /* Push down to touch ground */
     height: auto;
     filter: brightness(0) opacity(0.9);
     image-rendering: pixelated;
@@ -143,6 +143,14 @@ html, body {
 .palm-2 { left: 12%; height: 120px; transform: scaleX(-1); }
 .palm-3 { right: 8%; height: 100px; }
 .palm-4 { right: 18%; height: 75px; transform: scaleX(-1); }
+
+/* Smaller palm trees on mobile */
+@media (max-width: 600px) {
+    .palm-1 { height: 50px; }
+    .palm-2 { height: 65px; }
+    .palm-3 { height: 55px; }
+    .palm-4 { height: 40px; }
+}
 
 /* Rocket and tower silhouette */
 .rocket-silhouette {
@@ -243,6 +251,20 @@ html, body {
     margin: 5px 0;
 }
 
+.disclaimer {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: Arial, sans-serif;
+    font-size: clamp(7px, 1.5vw, 9px);
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    max-width: 90%;
+    line-height: 1.4;
+    z-index: 10;
+}
+
 /* Mobile/Desktop text switching */
 .mobile-text { display: none; }
 .desktop-text { display: inline; }
@@ -327,6 +349,12 @@ html, body {
     font-size: clamp(60px, 20vw, 120px);
     animation: milestoneBounce 0.5s ease-out;
     filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.8));
+}
+
+.milestone-flash .milestone-img {
+    width: clamp(80px, 25vw, 150px);
+    height: auto;
+    image-rendering: pixelated;
 }
 
 .milestone-flash .milestone-name {

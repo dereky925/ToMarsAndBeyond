@@ -37,6 +37,9 @@ const SoundGenerator = {
             case 'coin':
                 this.playCoin();
                 break;
+            case 'heart':
+                this.playHeart();
+                break;
             case 'hit':
                 this.playHit();
                 break;
@@ -89,6 +92,13 @@ const SoundGenerator = {
     playCoin() {
         this.createOscillator(987, 'square', 0.05);
         setTimeout(() => this.createOscillator(1318, 'square', 0.1), 50);
+    },
+
+    playHeart() {
+        // Warm, uplifting sound for heart pickup
+        this.createOscillator(523, 'sine', 0.1);
+        setTimeout(() => this.createOscillator(659, 'sine', 0.1), 80);
+        setTimeout(() => this.createOscillator(784, 'sine', 0.15), 160);
     },
 
     playHit() {
@@ -720,7 +730,13 @@ const Game = {
                 
             case 3: // Booster separation
                 this.booster.separated = true;
-                this.booster.rotation += 2 * this.deltaTime;
+                // Only rotate up to 180 degrees (PI radians), then stop
+                if (this.booster.rotation < Math.PI) {
+                    this.booster.rotation += 2.5 * this.deltaTime;
+                    if (this.booster.rotation > Math.PI) {
+                        this.booster.rotation = Math.PI; // Cap at exactly 180 degrees
+                    }
+                }
                 this.booster.velocityY += 100 * this.deltaTime;
                 this.booster.y += this.booster.velocityY * this.deltaTime;
                 
@@ -982,7 +998,7 @@ const Game = {
             // Collision check
             if (this.checkCollision(this.player, heart)) {
                 if (this.stats.hearts < this.stats.maxHearts) {
-                    SoundGenerator.play('coin'); // Use coin sound for now
+                    SoundGenerator.play('heart');
                     this.stats.hearts++;
                     this.updateHearts();
                     this.showCoinCollect(heart.x, heart.y, '+❤️');
@@ -993,57 +1009,51 @@ const Game = {
     },
     
     updateMilestonePlanet() {
-        if (this.currentMilestoneIndex >= SCALED_MILESTONES.length) {
-            // Check if there's still a planet scrolling off
-            if (this.milestonePlanet && this.milestonePlanet.y < this.height + 200) {
-                // Continue scrolling the last planet off screen
-                this.milestonePlanet.y += 80 * this.deltaTime;
-                this.milestonePlanet.opacity = Math.max(0, this.milestonePlanet.opacity - 0.3 * this.deltaTime);
-            } else {
+        // If a planet is currently being displayed and has been passed, scroll it off
+        if (this.milestonePlanet && this.milestonePlanet.passed) {
+            // Scroll the planet down past the player
+            this.milestonePlanet.y += 150 * this.deltaTime;
+            
+            // Fade out as it goes off screen
+            if (this.milestonePlanet.y > this.height * 0.4) {
+                this.milestonePlanet.opacity = Math.max(0, this.milestonePlanet.opacity - 0.8 * this.deltaTime);
+            }
+            
+            // Remove when fully off screen or faded
+            if (this.milestonePlanet.y > this.height + 100 || this.milestonePlanet.opacity <= 0) {
                 this.milestonePlanet = null;
             }
+            return; // Don't process new milestone while old one is scrolling off
+        }
+        
+        // No more milestones to show
+        if (this.currentMilestoneIndex >= SCALED_MILESTONES.length) {
+            this.milestonePlanet = null;
             return;
         }
         
         const milestone = SCALED_MILESTONES[this.currentMilestoneIndex];
         const distanceToMilestone = milestone.gameDistance - this.stats.altitude;
         
-        // Start showing planet when getting close (within 500 game km)
-        if (distanceToMilestone <= 500 && distanceToMilestone > 0) {
-            const progress = 1 - (distanceToMilestone / 500);
+        // Start showing planet when getting close (within 600 game km)
+        if (distanceToMilestone <= 600 && distanceToMilestone > 0) {
+            const progress = 1 - (distanceToMilestone / 600);
+            
+            // Create or update the planet display
             this.milestonePlanet = {
                 ...milestone,
                 progress: progress,
                 size: 80 + progress * 200, // Grows from 80 to 280
-                y: -100 + progress * (this.height * 0.3), // Moves down into view
-                opacity: Math.min(progress * 1.5, 1),
+                y: -150 + progress * (this.height * 0.35), // Moves down into view
+                opacity: Math.min(progress * 1.2, 1),
                 passed: false
             };
-        } else if (distanceToMilestone <= 0) {
-            // Passed the milestone - continue scrolling planet down and off screen
-            if (this.milestonePlanet && !this.milestonePlanet.passed) {
-                this.milestonePlanet.passed = true;
-            }
-            
-            if (this.milestonePlanet) {
-                // Scroll the planet down past the player
-                this.milestonePlanet.y += 120 * this.deltaTime;
-                
-                // Fade out as it goes off screen
-                if (this.milestonePlanet.y > this.height * 0.5) {
-                    this.milestonePlanet.opacity = Math.max(0, this.milestonePlanet.opacity - 0.5 * this.deltaTime);
-                }
-                
-                // Remove when fully off screen
-                if (this.milestonePlanet.y > this.height + 200 || this.milestonePlanet.opacity <= 0) {
-                    this.milestonePlanet = null;
-                }
-            }
-        } else {
-            // Not close enough yet - but don't clear if a planet is still scrolling off
-            if (!this.milestonePlanet || (this.milestonePlanet && this.milestonePlanet.y > this.height + 200)) {
-                this.milestonePlanet = null;
-            }
+        } else if (distanceToMilestone <= 0 && this.milestonePlanet && !this.milestonePlanet.passed) {
+            // Just passed the milestone - mark it as passed so it starts scrolling off
+            this.milestonePlanet.passed = true;
+        } else if (distanceToMilestone > 600) {
+            // Not close enough yet
+            this.milestonePlanet = null;
         }
     },
     
@@ -1152,9 +1162,22 @@ const Game = {
     },
     
     showMilestone(milestone) {
+        // Map milestone names to asset names
+        const assetNameMap = {
+            'MOON': 'Moon',
+            'MARS': 'Mars',
+            'JUPITER': 'Jupiter',
+            'SATURN': 'Saturn',
+            'URANUS': 'Uranus',
+            'NEPTUNE': 'Neptune',
+            'PLUTO': 'Pluto',
+            'VOYAGER 1': 'Voyager1'
+        };
+        const assetName = assetNameMap[milestone.name] || milestone.name;
+        
         const flash = document.getElementById('milestone-flash');
         flash.innerHTML = `
-            <div class="milestone-icon">${milestone.emoji}</div>
+            <div class="milestone-icon"><img src="Assets/${assetName}.png" alt="${milestone.name}" class="milestone-img"></div>
             <div class="milestone-name">${milestone.name}</div>
             <div class="milestone-reached">REACHED!</div>
             <div class="milestone-bonus">+${milestone.bonus.toLocaleString()} POINTS</div>
@@ -1452,10 +1475,15 @@ const Game = {
         
         if (!palmAsset || !palmAsset.complete) return;
         
+        // Scale down palm trees on mobile (smaller screens)
+        const isMobile = this.width < 600;
+        const sizeMultiplier = isMobile ? 0.5 : 1;
+        
         this.palmTrees.forEach(palm => {
             // Only render if still on screen
-            const palmY = this.height + palm.offsetY + 10; // +10 to push down to touch ground
-            if (palmY > this.height + palm.height + 50) return;
+            const palmY = this.height + palm.offsetY + 20; // +20 to push down to touch ground
+            const scaledHeight = palm.height * sizeMultiplier;
+            if (palmY > this.height + scaledHeight + 50) return;
             
             ctx.save();
             ctx.translate(palm.x, palmY);
@@ -1467,12 +1495,12 @@ const Game = {
             
             // Calculate width based on height (maintain aspect ratio)
             const aspectRatio = palmAsset.width / palmAsset.height;
-            const w = palm.height * aspectRatio;
+            const w = scaledHeight * aspectRatio;
             
             // Draw as silhouette (black)
             ctx.filter = 'brightness(0)';
             ctx.globalAlpha = 0.9;
-            ctx.drawImage(palmAsset, -w/2, -palm.height, w, palm.height);
+            ctx.drawImage(palmAsset, -w/2, -scaledHeight, w, scaledHeight);
             
             ctx.restore();
         });

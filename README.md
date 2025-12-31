@@ -144,9 +144,17 @@ The game generates 8-bit style sound effects programmatically using the Web Audi
 | Mobile | Swipe/drag left/right |
 | All | Tap/click to start |
 
+## ⚠️ Disclaimer
+
+**This is an independent fan-made game and is NOT affiliated with, endorsed by, sponsored by, or in any way officially connected with Space Exploration Technologies Corp. (SpaceX) or any of its subsidiaries or affiliates.**
+
+SpaceX, Starship, Starbase, and related names, marks, emblems, and images are trademarks of their respective owners. All spacecraft designs and imagery inspired by real-world SpaceX vehicles are used purely for fan entertainment purposes.
+
+This game is a non-commercial tribute to space exploration and the exciting developments in the space industry.
+
 ## 📄 License
 
-This is a fan-made game inspired by SpaceX. SpaceX and Starship are trademarks of Space Exploration Technologies Corp.
+MIT License - This is an open-source fan project.
 
 ---
 
