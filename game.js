@@ -1454,7 +1454,7 @@ const Game = {
         
         this.palmTrees.forEach(palm => {
             // Only render if still on screen
-            const palmY = this.height + palm.offsetY;
+            const palmY = this.height + palm.offsetY + 10; // +10 to push down to touch ground
             if (palmY > this.height + palm.height + 50) return;
             
             ctx.save();
