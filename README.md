@@ -1,10 +1,11 @@
 ![SpaceX](Assets/SpaceX.png)
-# 🚀 To Mars And Beyond
+# 🚀 To Mars And Beyond!
 
-An 8-bit style SpaceX Starship game where you pilot Starship from Starbase, Texas to the edge of the solar system!
+An 8-bit style SpaceX-themed game where you pilot Starship from Starbase, Texas to the edge of the solar system!
 
 <img width="1092" height="616" alt="image" src="https://github.com/user-attachments/assets/9019750a-19d3-48b2-a0d0-cd3a79d4d419" />
 
+#Click [HERE](https://dereky925.github.io/ToMarsAndBeyond/) to play
 
 ## 🎮 How to Play
 
