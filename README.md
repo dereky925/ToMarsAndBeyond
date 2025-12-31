@@ -5,7 +5,23 @@ An 8-bit style SpaceX-themed game where you pilot Starship from Starbase, Texas 
 
 <img width="1092" height="616" alt="image" src="https://github.com/user-attachments/assets/9019750a-19d3-48b2-a0d0-cd3a79d4d419" />
 
-#Click [HERE](https://dereky925.github.io/ToMarsAndBeyond/) to play
+<div align="center">
+
+<a href="https://dereky925.github.io/ToMarsAndBeyond/" style="
+  display: inline-block;
+  padding: 16px 28px;
+  margin: 20px 0;
+  font-size: 20px;
+  font-weight: bold;
+  color: white;
+  background-color: #ff4c4c;
+  text-decoration: none;
+  border-radius: 10px;
+">
+🚀 PLAY THE GAME 🚀
+</a>
+
+</div>
 
 ## 🎮 How to Play
 
